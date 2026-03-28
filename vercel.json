@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "ui/dist",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://uivqksbjufsyebdobplq.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpdnFrc2JqdWZzeWViZG9icGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MjAzNjcsImV4cCI6MjA5MDI5NjM2N30.jCX29AOqeFq-7btc3k0JhjfSNlvePsM0UJ5wBCYxRzg"
+  }
+}
