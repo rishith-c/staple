@@ -37,20 +37,20 @@ describe("buildInviteOnboardingTextDocument", () => {
       allowedHostnames: [],
     });
 
-    expect(text).toContain("Paperclip OpenClaw Gateway Onboarding");
+    expect(text).toContain("Staple OpenClaw Gateway Onboarding");
     expect(text).toContain("/api/invites/token-123/accept");
     expect(text).toContain("/api/join-requests/{requestId}/claim-api-key");
     expect(text).toContain("/api/invites/token-123/onboarding.txt");
-    expect(text).toContain("Suggested Paperclip base URLs to try");
+    expect(text).toContain("Suggested Staple base URLs to try");
     expect(text).toContain("http://localhost:3100");
     expect(text).toContain("host.docker.internal");
-    expect(text).toContain("paperclipApiUrl");
+    expect(text).toContain("stapleApiUrl");
     expect(text).toContain("adapterType \"openclaw_gateway\"");
     expect(text).toContain("headers.x-openclaw-token");
     expect(text).toContain("Do NOT use /v1/responses or /hooks/*");
-    expect(text).toContain("set the first reachable candidate as agentDefaultsPayload.paperclipApiUrl");
-    expect(text).toContain("~/.openclaw/workspace/paperclip-claimed-api-key.json");
-    expect(text).toContain("PAPERCLIP_API_KEY");
+    expect(text).toContain("set the first reachable candidate as agentDefaultsPayload.stapleApiUrl");
+    expect(text).toContain("~/.openclaw/workspace/staple-claimed-api-key.json");
+    expect(text).toContain("STAPLE_API_KEY");
     expect(text).toContain("saved token field");
     expect(text).toContain("Gateway token unexpectedly short");
   });

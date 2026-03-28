@@ -54,8 +54,8 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
-import type { ActivityEvent } from "@paperclipai/shared";
-import type { Agent, IssueAttachment } from "@paperclipai/shared";
+import type { ActivityEvent } from "@stapleai/shared";
+import type { Agent, IssueAttachment } from "@stapleai/shared";
 
 type CommentReassignment = {
   assigneeAgentId: string | null;
@@ -1031,7 +1031,7 @@ export function IssueDetail() {
             projectId={issue.projectId}
             issueStatus={issue.status}
             agentMap={agentMap}
-            draftKey={`paperclip:issue-comment-draft:${issue.id}`}
+            draftKey={`staple:issue-comment-draft:${issue.id}`}
             enableReassign
             reassignOptions={commentReassignOptions}
             currentAssigneeValue={actualAssigneeValue}

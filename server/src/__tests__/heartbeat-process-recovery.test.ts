@@ -10,7 +10,7 @@ import {
   heartbeatRunEvents,
   heartbeatRuns,
   issues,
-} from "@paperclipai/db";
+} from "@stapleai/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,
@@ -38,7 +38,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
   const childProcesses = new Set<ChildProcess>();
 
   beforeAll(async () => {
-    tempDb = await startEmbeddedPostgresTestDatabase("paperclip-heartbeat-recovery-");
+    tempDb = await startEmbeddedPostgresTestDatabase("staple-heartbeat-recovery-");
     db = createDb(tempDb.connectionString);
   }, 20_000);
 
@@ -84,7 +84,7 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
 
     await db.insert(companies).values({
       id: companyId,
-      name: "Paperclip",
+      name: "Staple",
       issuePrefix,
       requireBoardApprovalForNewAgents: false,
     });

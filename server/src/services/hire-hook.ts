@@ -1,13 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
-import { agents } from "@paperclipai/db";
-import type { HireApprovedPayload } from "@paperclipai/adapter-utils";
+import type { Db } from "@stapleai/db";
+import { agents } from "@stapleai/db";
+import type { HireApprovedPayload } from "@stapleai/adapter-utils";
 import { findServerAdapter } from "../adapters/registry.js";
 import { logger } from "../middleware/logger.js";
 import { logActivity } from "./activity-log.js";
 
 const HIRE_APPROVED_MESSAGE =
-  "Tell your user that your hire was approved, now they should assign you a task in Paperclip or ask you to create issues.";
+  "Tell your user that your hire was approved, now they should assign you a task in Staple or ask you to create issues.";
 
 export interface NotifyHireApprovedInput {
   companyId: string;

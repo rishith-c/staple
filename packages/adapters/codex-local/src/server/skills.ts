@@ -4,20 +4,20 @@ import type {
   AdapterSkillContext,
   AdapterSkillEntry,
   AdapterSkillSnapshot,
-} from "@paperclipai/adapter-utils";
+} from "@stapleai/adapter-utils";
 import {
-  readPaperclipRuntimeSkillEntries,
-  resolvePaperclipDesiredSkillNames,
-} from "@paperclipai/adapter-utils/server-utils";
+  readStapleRuntimeSkillEntries,
+  resolveStapleDesiredSkillNames,
+} from "@stapleai/adapter-utils/server-utils";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildCodexSkillSnapshot(
   config: Record<string, unknown>,
 ): Promise<AdapterSkillSnapshot> {
-  const availableEntries = await readPaperclipRuntimeSkillEntries(config, __moduleDir);
+  const availableEntries = await readStapleRuntimeSkillEntries(config, __moduleDir);
   const availableByKey = new Map(availableEntries.map((entry) => [entry.key, entry]));
-  const desiredSkills = resolvePaperclipDesiredSkillNames(config, availableEntries);
+  const desiredSkills = resolveStapleDesiredSkillNames(config, availableEntries);
   const desiredSet = new Set(desiredSkills);
   const entries: AdapterSkillEntry[] = availableEntries.map((entry) => ({
     key: entry.key,
@@ -25,8 +25,8 @@ async function buildCodexSkillSnapshot(
     desired: desiredSet.has(entry.key),
     managed: true,
     state: desiredSet.has(entry.key) ? "configured" : "available",
-    origin: entry.required ? "paperclip_required" : "company_managed",
-    originLabel: entry.required ? "Required by Paperclip" : "Managed by Paperclip",
+    origin: entry.required ? "staple_required" : "company_managed",
+    originLabel: entry.required ? "Required by Staple" : "Managed by Staple",
     readOnly: false,
     sourcePath: entry.source,
     targetPath: null,
@@ -40,7 +40,7 @@ async function buildCodexSkillSnapshot(
 
   for (const desiredSkill of desiredSkills) {
     if (availableByKey.has(desiredSkill)) continue;
-    warnings.push(`Desired skill "${desiredSkill}" is not available from the Paperclip skills directory.`);
+    warnings.push(`Desired skill "${desiredSkill}" is not available from the Staple skills directory.`);
     entries.push({
       key: desiredSkill,
       runtimeName: null,
@@ -52,7 +52,7 @@ async function buildCodexSkillSnapshot(
       readOnly: false,
       sourcePath: null,
       targetPath: null,
-      detail: "Paperclip cannot find this skill in the local runtime skills directory.",
+      detail: "Staple cannot find this skill in the local runtime skills directory.",
     });
   }
 
@@ -83,5 +83,5 @@ export function resolveCodexDesiredSkillNames(
   config: Record<string, unknown>,
   availableEntries: Array<{ key: string; required?: boolean }>,
 ) {
-  return resolvePaperclipDesiredSkillNames(config, availableEntries);
+  return resolveStapleDesiredSkillNames(config, availableEntries);
 }

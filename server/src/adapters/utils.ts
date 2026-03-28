@@ -17,16 +17,16 @@ export {
   resolvePathValue,
   renderTemplate,
   redactEnvForLogs,
-  buildPaperclipEnv,
+  buildStapleEnv,
   defaultPathForPlatform,
   ensurePathInEnv,
   ensureAbsoluteDirectory,
   ensureCommandResolvable,
-} from "@paperclipai/adapter-utils/server-utils";
+} from "@stapleai/adapter-utils/server-utils";
 
 // Re-export runChildProcess with the server's pino logger wired in.
-import { runChildProcess as _runChildProcess } from "@paperclipai/adapter-utils/server-utils";
-import type { RunProcessResult } from "@paperclipai/adapter-utils/server-utils";
+import { runChildProcess as _runChildProcess } from "@stapleai/adapter-utils/server-utils";
+import type { RunProcessResult } from "@stapleai/adapter-utils/server-utils";
 
 export async function runChildProcess(
   runId: string,

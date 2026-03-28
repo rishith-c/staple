@@ -1,19 +1,19 @@
 {
-  "name": "@paperclipai/create-paperclip-plugin",
+  "name": "@stapleai/create-staple-plugin",
   "version": "0.1.0",
   "license": "MIT",
-  "homepage": "https://github.com/paperclipai/paperclip",
+  "homepage": "https://github.com/stapleai/staple",
   "bugs": {
-    "url": "https://github.com/paperclipai/paperclip/issues"
+    "url": "https://github.com/stapleai/staple/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paperclipai/paperclip",
-    "directory": "packages/plugins/create-paperclip-plugin"
+    "url": "https://github.com/stapleai/staple",
+    "directory": "packages/plugins/create-staple-plugin"
   },
   "type": "module",
   "bin": {
-    "create-paperclip-plugin": "./dist/index.js"
+    "create-staple-plugin": "./dist/index.js"
   },
   "exports": {
     ".": "./src/index.ts"
@@ -21,7 +21,7 @@
   "publishConfig": {
     "access": "public",
     "bin": {
-      "create-paperclip-plugin": "./dist/index.js"
+      "create-staple-plugin": "./dist/index.js"
     },
     "exports": {
       ".": {
@@ -41,7 +41,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@paperclipai/plugin-sdk": "workspace:*"
+    "@stapleai/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",

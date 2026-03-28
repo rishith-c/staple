@@ -5,32 +5,32 @@ summary: Onboard, run, doctor, and configure
 
 Instance setup and diagnostics commands.
 
-## `paperclipai run`
+## `stapleai run`
 
 One-command bootstrap and start:
 
 ```sh
-pnpm paperclipai run
+pnpm stapleai run
 ```
 
 Does:
 
 1. Auto-onboards if config is missing
-2. Runs `paperclipai doctor` with repair enabled
+2. Runs `stapleai doctor` with repair enabled
 3. Starts the server when checks pass
 
 Choose a specific instance:
 
 ```sh
-pnpm paperclipai run --instance dev
+pnpm stapleai run --instance dev
 ```
 
-## `paperclipai onboard`
+## `stapleai onboard`
 
 Interactive first-time setup:
 
 ```sh
-pnpm paperclipai onboard
+pnpm stapleai onboard
 ```
 
 First prompt:
@@ -41,22 +41,22 @@ First prompt:
 Start immediately after onboarding:
 
 ```sh
-pnpm paperclipai onboard --run
+pnpm stapleai onboard --run
 ```
 
 Non-interactive defaults + immediate start (opens browser on server listen):
 
 ```sh
-pnpm paperclipai onboard --yes
+pnpm stapleai onboard --yes
 ```
 
-## `paperclipai doctor`
+## `stapleai doctor`
 
 Health checks with optional auto-repair:
 
 ```sh
-pnpm paperclipai doctor
-pnpm paperclipai doctor --repair
+pnpm stapleai doctor
+pnpm stapleai doctor --repair
 ```
 
 Validates:
@@ -67,51 +67,51 @@ Validates:
 - Storage configuration
 - Missing key files
 
-## `paperclipai configure`
+## `stapleai configure`
 
 Update configuration sections:
 
 ```sh
-pnpm paperclipai configure --section server
-pnpm paperclipai configure --section secrets
-pnpm paperclipai configure --section storage
+pnpm stapleai configure --section server
+pnpm stapleai configure --section secrets
+pnpm stapleai configure --section storage
 ```
 
-## `paperclipai env`
+## `stapleai env`
 
 Show resolved environment configuration:
 
 ```sh
-pnpm paperclipai env
+pnpm stapleai env
 ```
 
-## `paperclipai allowed-hostname`
+## `stapleai allowed-hostname`
 
 Allow a private hostname for authenticated/private mode:
 
 ```sh
-pnpm paperclipai allowed-hostname my-tailscale-host
+pnpm stapleai allowed-hostname my-tailscale-host
 ```
 
 ## Local Storage Paths
 
 | Data | Default Path |
 |------|-------------|
-| Config | `~/.paperclip/instances/default/config.json` |
-| Database | `~/.paperclip/instances/default/db` |
-| Logs | `~/.paperclip/instances/default/logs` |
-| Storage | `~/.paperclip/instances/default/data/storage` |
-| Secrets key | `~/.paperclip/instances/default/secrets/master.key` |
+| Config | `~/.staple/instances/default/config.json` |
+| Database | `~/.staple/instances/default/db` |
+| Logs | `~/.staple/instances/default/logs` |
+| Storage | `~/.staple/instances/default/data/storage` |
+| Secrets key | `~/.staple/instances/default/secrets/master.key` |
 
 Override with:
 
 ```sh
-PAPERCLIP_HOME=/custom/home PAPERCLIP_INSTANCE_ID=dev pnpm paperclipai run
+STAPLE_HOME=/custom/home STAPLE_INSTANCE_ID=dev pnpm stapleai run
 ```
 
 Or pass `--data-dir` directly on any command:
 
 ```sh
-pnpm paperclipai run --data-dir ./tmp/paperclip-dev
-pnpm paperclipai doctor --data-dir ./tmp/paperclip-dev
+pnpm stapleai run --data-dir ./tmp/staple-dev
+pnpm stapleai doctor --data-dir ./tmp/staple-dev
 ```

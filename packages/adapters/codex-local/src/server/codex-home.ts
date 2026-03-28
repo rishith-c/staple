@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { AdapterExecutionContext } from "@paperclipai/adapter-utils";
+import type { AdapterExecutionContext } from "@stapleai/adapter-utils";
 
 const TRUTHY_ENV_RE = /^(1|true|yes|on)$/i;
 const COPIED_SHARED_FILES = ["config.json", "config.toml", "instructions.md"] as const;
 const SYMLINKED_SHARED_FILES = ["auth.json"] as const;
-const DEFAULT_PAPERCLIP_INSTANCE_ID = "default";
+const DEFAULT_STAPLE_INSTANCE_ID = "default";
 
 function nonEmpty(value: string | undefined): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -24,18 +24,18 @@ export function resolveSharedCodexHomeDir(
 }
 
 function isWorktreeMode(env: NodeJS.ProcessEnv): boolean {
-  return TRUTHY_ENV_RE.test(env.PAPERCLIP_IN_WORKTREE ?? "");
+  return TRUTHY_ENV_RE.test(env.STAPLE_IN_WORKTREE ?? "");
 }
 
 export function resolveManagedCodexHomeDir(
   env: NodeJS.ProcessEnv,
   companyId?: string,
 ): string {
-  const paperclipHome = nonEmpty(env.PAPERCLIP_HOME) ?? path.resolve(os.homedir(), ".paperclip");
-  const instanceId = nonEmpty(env.PAPERCLIP_INSTANCE_ID) ?? DEFAULT_PAPERCLIP_INSTANCE_ID;
+  const stapleHome = nonEmpty(env.STAPLE_HOME) ?? path.resolve(os.homedir(), ".staple");
+  const instanceId = nonEmpty(env.STAPLE_INSTANCE_ID) ?? DEFAULT_STAPLE_INSTANCE_ID;
   return companyId
-    ? path.resolve(paperclipHome, "instances", instanceId, "companies", companyId, "codex-home")
-    : path.resolve(paperclipHome, "instances", instanceId, "codex-home");
+    ? path.resolve(stapleHome, "instances", instanceId, "companies", companyId, "codex-home")
+    : path.resolve(stapleHome, "instances", instanceId, "codex-home");
 }
 
 async function ensureParentDir(target: string): Promise<void> {
@@ -97,7 +97,7 @@ export async function prepareManagedCodexHome(
 
   await onLog(
     "stdout",
-    `[paperclip] Using ${isWorktreeMode(env) ? "worktree-isolated" : "Paperclip-managed"} Codex home "${targetHome}" (seeded from "${sourceHome}").\n`,
+    `[staple] Using ${isWorktreeMode(env) ? "worktree-isolated" : "Staple-managed"} Codex home "${targetHome}" (seeded from "${sourceHome}").\n`,
   );
   return targetHome;
 }

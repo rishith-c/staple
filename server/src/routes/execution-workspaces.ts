@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { Router } from "express";
-import type { Db } from "@paperclipai/db";
-import { issues, projects, projectWorkspaces } from "@paperclipai/db";
-import { updateExecutionWorkspaceSchema } from "@paperclipai/shared";
+import type { Db } from "@stapleai/db";
+import { issues, projects, projectWorkspaces } from "@stapleai/db";
+import { updateExecutionWorkspaceSchema } from "@stapleai/shared";
 import { validate } from "../middleware/validate.js";
 import { executionWorkspaceService, logActivity, workspaceOperationService } from "../services/index.js";
 import { parseProjectExecutionWorkspacePolicy } from "../services/execution-workspace-policy.js";
