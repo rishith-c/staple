@@ -1,13 +1,8 @@
 node_modules
 .git
 data
-patches
 docker
 evals
 tests
 report
 releases
-doc
-docs
-*.md
-!README.md
