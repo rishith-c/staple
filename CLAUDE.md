@@ -114,6 +114,14 @@ pnpm build
 - Database: `DATABASE_URL` for external Postgres, unset for embedded
 - TypeScript: ES2023 target, NodeNext module resolution, strict mode
 
+## Git Workflow
+
+After every change (code edits, file creation, config updates), commit and push to `origin main` immediately. Every modification should be its own commit with a descriptive message. Do not batch unrelated changes. Push after every commit.
+
+- Remote: `origin` → `https://github.com/rishith-c/staple.git`
+- Auth: `gh` CLI (already authenticated)
+- Branch: `main`
+
 ## Reference Docs
 
 - `AGENTS.md` — Contributor guide with repo map and engineering rules
