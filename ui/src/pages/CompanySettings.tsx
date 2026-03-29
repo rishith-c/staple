@@ -8,7 +8,7 @@ import { accessApi } from "../api/access";
 import { assetsApi } from "../api/assets";
 import { queryKeys } from "../lib/queryKeys";
 import { Button } from "@/components/ui/button";
-import { Settings, Check, Download, Upload } from "lucide-react";
+import { Settings, Check, Download, Upload, Trash2 } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
 import {
   Field,
@@ -193,6 +193,35 @@ export function CompanySettings() {
       });
       await queryClient.invalidateQueries({
         queryKey: queryKeys.companies.stats
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: ({
+      companyId,
+      nextCompanyId
+    }: {
+      companyId: string;
+      nextCompanyId: string | null;
+    }) => companiesApi.remove(companyId).then(() => ({ nextCompanyId })),
+    onSuccess: async ({ nextCompanyId }) => {
+      if (nextCompanyId) {
+        setSelectedCompanyId(nextCompanyId);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.all
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.stats
+      });
+      pushToast({ title: "Company deleted", tone: "success" });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Failed to delete company",
+        body: err instanceof Error ? err.message : "Unknown error",
+        tone: "error"
       });
     }
   });
@@ -539,6 +568,46 @@ export function CompanySettings() {
                   : "Failed to archive company"}
               </span>
             )}
+          </div>
+
+          <div className="mt-4 border-t border-destructive/20 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Permanently delete this company and all its data. This action cannot be undone.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (!selectedCompanyId) return;
+                  const confirmed = window.confirm(
+                    `Permanently delete "${selectedCompany.name}" and ALL its data (agents, issues, goals, projects, costs)? This cannot be undone.`
+                  );
+                  if (!confirmed) return;
+                  const nextCompanyId =
+                    companies.find(
+                      (company) =>
+                        company.id !== selectedCompanyId &&
+                        company.status !== "archived"
+                    )?.id ?? null;
+                  deleteMutation.mutate({
+                    companyId: selectedCompanyId,
+                    nextCompanyId
+                  });
+                }}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                {deleteMutation.isPending ? "Deleting..." : "Delete company"}
+              </Button>
+              {deleteMutation.isError && (
+                <span className="text-xs text-destructive">
+                  {deleteMutation.error instanceof Error
+                    ? deleteMutation.error.message
+                    : "Failed to delete company"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

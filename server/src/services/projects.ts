@@ -1,6 +1,15 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@stapleai/db";
-import { projects, projectGoals, goals, projectWorkspaces, workspaceRuntimeServices } from "@stapleai/db";
+import {
+  projects,
+  projectGoals,
+  goals,
+  projectWorkspaces,
+  workspaceRuntimeServices,
+  issues,
+  costEvents,
+  financeEvents,
+} from "@stapleai/db";
 import {
   PROJECT_COLORS,
   deriveProjectUrlKey,
@@ -516,16 +525,29 @@ export function projectService(db: Db) {
       return enriched ?? null;
     },
 
-    remove: (id: string) =>
-      db
-        .delete(projects)
-        .where(eq(projects.id, id))
-        .returning()
-        .then((rows) => {
-          const row = rows[0] ?? null;
-          if (!row) return null;
-          return { ...row, urlKey: deriveProjectUrlKey(row.name, row.id) };
-        }),
+    remove: async (id: string) =>
+      db.transaction(async (tx) => {
+        await tx
+          .update(issues)
+          .set({ projectId: null, updatedAt: new Date() })
+          .where(eq(issues.projectId, id));
+        await tx
+          .update(costEvents)
+          .set({ projectId: null })
+          .where(eq(costEvents.projectId, id));
+        await tx
+          .update(financeEvents)
+          .set({ projectId: null })
+          .where(eq(financeEvents.projectId, id));
+
+        const row = await tx
+          .delete(projects)
+          .where(eq(projects.id, id))
+          .returning()
+          .then((rows) => rows[0] ?? null);
+        if (!row) return null;
+        return { ...row, urlKey: deriveProjectUrlKey(row.name, row.id) };
+      }),
 
     listWorkspaces: async (projectId: string): Promise<ProjectWorkspace[]> => {
       const rows = await db

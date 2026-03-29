@@ -24,6 +24,8 @@ export interface CostEvent {
 export interface CostSummary {
   companyId: string;
   spendCents: number;
+  estimatedUnbilledSpendCents: number;
+  displaySpendCents: number;
   budgetCents: number;
   utilizationPercent: number;
 }
@@ -33,6 +35,7 @@ export interface CostByAgent {
   agentName: string | null;
   agentStatus: string | null;
   costCents: number;
+  estimatedUnbilledCostCents: number;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
@@ -41,6 +44,7 @@ export interface CostByAgent {
   subscriptionCachedInputTokens: number;
   subscriptionInputTokens: number;
   subscriptionOutputTokens: number;
+  lastOccurredAt: Date | null;
 }
 
 export interface CostByProviderModel {
@@ -49,6 +53,7 @@ export interface CostByProviderModel {
   billingType: BillingType;
   model: string;
   costCents: number;
+  estimatedUnbilledCostCents: number;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
@@ -83,6 +88,7 @@ export interface CostByAgentModel {
   billingType: BillingType;
   model: string;
   costCents: number;
+  estimatedUnbilledCostCents: number;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
@@ -107,7 +113,59 @@ export interface CostByProject {
   projectId: string | null;
   projectName: string | null;
   costCents: number;
+  estimatedUnbilledCostCents: number;
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
+  lastOccurredAt: Date | null;
+}
+
+export interface CostByRuntimeProject {
+  adapterType: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  costCents: number;
+  estimatedUnbilledCostCents: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  agentCount: number;
+  runCount: number;
+  lastOccurredAt: Date | null;
+}
+
+export interface CostUsageLogRow {
+  eventId: string;
+  heartbeatRunId: string | null;
+  agentId: string;
+  agentName: string | null;
+  agentStatus: string | null;
+  adapterType: string | null;
+  issueId: string | null;
+  issueTitle: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  provider: string;
+  biller: string;
+  billingType: BillingType;
+  model: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  costCents: number;
+  estimatedUnbilledCostCents: number;
+  displayCostCents: number;
+  costSource: "billed" | "estimated" | "estimated_inferred_model" | "none";
+  pricingMatchedModel: string | null;
+  pricingSourceUrl: string | null;
+  occurredAt: Date;
+  requestedAt: Date | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  requestedByActorType: string | null;
+  requestedByActorId: string | null;
+  invocationSource: string | null;
+  triggerDetail: string | null;
+  cwd: string | null;
+  workspaceSource: string | null;
 }

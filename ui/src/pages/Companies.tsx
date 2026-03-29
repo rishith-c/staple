@@ -21,6 +21,7 @@ import {
   X,
   Plus,
   MoreHorizontal,
+  Sparkles,
   Trash2,
   Users,
   CircleDot,
@@ -36,9 +37,10 @@ export function Companies() {
     loading,
     error,
   } = useCompany();
-  const { openOnboarding } = useDialog();
+  const { openOnboarding, openMasterPlanner } = useDialog();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
+  const plannerCompany = companies.find((company) => company.id === selectedCompanyId) ?? companies[0] ?? null;
 
   const { data: stats } = useQuery({
     queryKey: queryKeys.companies.stats,
@@ -87,9 +89,26 @@ export function Companies() {
     setEditName("");
   }
 
+  function openPlannerForCompany(companyId: string) {
+    setSelectedCompanyId(companyId);
+    openMasterPlanner();
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!plannerCompany}
+          onClick={() => {
+            if (!plannerCompany) return;
+            openPlannerForCompany(plannerCompany.id);
+          }}
+        >
+          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+          Master Prompt
+        </Button>
         <Button size="sm" onClick={() => openOnboarding()}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           New Company
@@ -199,7 +218,16 @@ export function Companies() {
                 </div>
 
                 {/* Three-dot menu */}
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[36px] gap-1.5"
+                    onClick={() => openPlannerForCompany(company.id)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Master Prompt
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -211,6 +239,11 @@ export function Companies() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openPlannerForCompany(company.id)}>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Master Prompt
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => startEdit(company.id, company.name)}
                       >

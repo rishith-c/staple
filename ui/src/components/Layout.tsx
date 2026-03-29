@@ -12,6 +12,7 @@ import { NewIssueDialog } from "./NewIssueDialog";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { NewGoalDialog } from "./NewGoalDialog";
 import { NewAgentDialog } from "./NewAgentDialog";
+import { MasterPromptPlannerDialog } from "./MasterPromptPlannerDialog";
 import { ToastViewport } from "./ToastViewport";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { WorktreeBanner } from "./WorktreeBanner";
@@ -68,6 +69,10 @@ export function Layout() {
   const [mobileNavVisible, setMobileNavVisible] = useState(true);
   const [instanceSettingsTarget, setInstanceSettingsTarget] = useState<string>(() => readRememberedInstanceSettingsPath());
   const nextTheme = theme === "dark" ? "light" : "dark";
+  const documentationHref =
+    typeof window === "undefined"
+      ? `/documentation?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`
+      : `${window.location.origin}/documentation?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const matchedCompany = useMemo(() => {
     if (!companyPrefix) return null;
     const requestedPrefix = companyPrefix.toUpperCase();
@@ -297,7 +302,7 @@ export function Layout() {
             <div className="border-t border-r border-border px-3 py-2 bg-background">
               <div className="flex items-center gap-1">
                 <a
-                  href="https://docs.staple.ing/"
+                  href={documentationHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
@@ -355,7 +360,7 @@ export function Layout() {
             <div className="border-t border-r border-border px-3 py-2">
               <div className="flex items-center gap-1">
                 <a
-                  href="https://docs.staple.ing/"
+                  href={documentationHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors text-foreground/80 hover:bg-accent/50 hover:text-foreground flex-1 min-w-0"
@@ -435,6 +440,7 @@ export function Layout() {
       <NewProjectDialog />
       <NewGoalDialog />
       <NewAgentDialog />
+      <MasterPromptPlannerDialog />
       <ToastViewport />
     </div>
   );

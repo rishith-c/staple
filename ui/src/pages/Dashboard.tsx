@@ -54,6 +54,8 @@ export function Dashboard() {
     queryKey: queryKeys.dashboard(selectedCompanyId!),
     queryFn: () => dashboardApi.summary(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
   });
 
   const { data: activity } = useQuery({

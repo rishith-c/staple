@@ -27,6 +27,10 @@ import { resolveCodexDesiredSkillNames } from "./skills.js";
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const CODEX_ROLLOUT_NOISE_RE =
   /^\d{4}-\d{2}-\d{2}T[^\s]+\s+ERROR\s+codex_core::rollout::list:\s+state db missing rollout path for thread\s+[a-z0-9-]+$/i;
+const CODEX_MODELS_MANAGER_TIMEOUT_RE =
+  /^\d{4}-\d{2}-\d{2}T[^\s]+\s+ERROR\s+codex_core::models_manager::manager:\s+failed to refresh available models:\s+timeout waiting for child process to exit$/i;
+const CODEX_SKILL_LOAD_YAML_ERROR_RE =
+  /failed to load skill\s+.*apple-ui-design\/SKILL\.md:\s+invalid YAML:/i;
 
 function stripCodexRolloutNoise(text: string): string {
   const parts = text.split(/\r?\n/);
@@ -37,7 +41,11 @@ function stripCodexRolloutNoise(text: string): string {
       kept.push(part);
       continue;
     }
-    if (CODEX_ROLLOUT_NOISE_RE.test(trimmed)) continue;
+    if (
+      CODEX_ROLLOUT_NOISE_RE.test(trimmed) ||
+      CODEX_MODELS_MANAGER_TIMEOUT_RE.test(trimmed) ||
+      CODEX_SKILL_LOAD_YAML_ERROR_RE.test(trimmed)
+    ) continue;
     kept.push(part);
   }
   return kept.join("\n");

@@ -212,9 +212,12 @@ function collectSiblingWorktreePorts(context: WorktreeRuntimeContext): {
 }
 
 function findNextUnclaimedPort(preferredPort: number, claimedPorts: Set<number>): number {
-  let port = Math.max(1, Math.trunc(preferredPort));
-  while (claimedPorts.has(port)) {
+  let port = Math.min(65_535, Math.max(1, Math.trunc(preferredPort)));
+  while (port <= 65_535 && claimedPorts.has(port)) {
     port += 1;
+  }
+  if (port > 65_535) {
+    throw new Error(`No unclaimed port found starting from ${Math.min(65_535, Math.max(1, Math.trunc(preferredPort)))}.`);
   }
   return port;
 }

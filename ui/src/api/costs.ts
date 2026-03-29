@@ -5,6 +5,8 @@ import type {
   CostByBiller,
   CostByAgentModel,
   CostByProject,
+  CostByRuntimeProject,
+  CostUsageLogRow,
   CostWindowSpendRow,
   FinanceSummary,
   FinanceByBiller,
@@ -31,6 +33,10 @@ export const costsApi = {
     api.get<CostByAgentModel[]>(`/companies/${companyId}/costs/by-agent-model${dateParams(from, to)}`),
   byProject: (companyId: string, from?: string, to?: string) =>
     api.get<CostByProject[]>(`/companies/${companyId}/costs/by-project${dateParams(from, to)}`),
+  byRuntimeProject: (companyId: string, from?: string, to?: string) =>
+    api.get<CostByRuntimeProject[]>(`/companies/${companyId}/costs/by-runtime-project${dateParams(from, to)}`),
+  usageLog: (companyId: string, from?: string, to?: string, limit: number = 50) =>
+    api.get<CostUsageLogRow[]>(`/companies/${companyId}/costs/usage-log${dateParamsWithLimit(from, to, limit)}`),
   byProvider: (companyId: string, from?: string, to?: string) =>
     api.get<CostByProviderModel[]>(`/companies/${companyId}/costs/by-provider${dateParams(from, to)}`),
   byBiller: (companyId: string, from?: string, to?: string) =>

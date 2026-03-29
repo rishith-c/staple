@@ -49,6 +49,21 @@ export interface AgentHireResponse {
   approval: Approval | null;
 }
 
+export interface AgentConfigurationSuggestion {
+  name: string;
+  title: string;
+  role: Agent["role"];
+  capabilities: string;
+  adapterType: "claude_local" | "codex_local" | "gemini_local" | "opencode_local" | "cursor";
+  model: string;
+  promptTemplate: string;
+  heartbeatEnabled: boolean;
+  intervalSec: number;
+  reasoning: string[];
+  warnings: string[];
+  source: "openai" | "heuristic";
+}
+
 export interface AgentPermissionUpdate {
   canCreateAgents: boolean;
   canAssignTasks: boolean;
@@ -158,6 +173,11 @@ export const agentsApi = {
   adapterModels: (companyId: string, type: string) =>
     api.get<AdapterModel[]>(
       `/companies/${encodeURIComponent(companyId)}/adapters/${encodeURIComponent(type)}/models`,
+    ),
+  suggestConfiguration: (companyId: string, brief: string) =>
+    api.post<AgentConfigurationSuggestion>(
+      `/companies/${companyId}/agent-configuration-suggestions`,
+      { brief },
     ),
   testEnvironment: (
     companyId: string,

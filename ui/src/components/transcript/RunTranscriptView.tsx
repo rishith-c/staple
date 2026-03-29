@@ -278,7 +278,13 @@ function parseSystemActivity(text: string): { activityId?: string; name: string;
 
 function shouldHideNiceModeStderr(text: string): boolean {
   const normalized = compactWhitespace(text).toLowerCase();
-  return normalized.startsWith("[staple] skipping saved session resume");
+  return (
+    normalized.startsWith("[staple] skipping saved session resume") ||
+    normalized.includes("codex_core::models_manager::manager: failed to refresh available models: timeout waiting for child process to exit") ||
+    (normalized.includes("failed to load skill") &&
+      normalized.includes("apple-ui-design/skill.md") &&
+      normalized.includes("invalid yaml"))
+  );
 }
 
 function groupCommandBlocks(blocks: TranscriptBlock[]): TranscriptBlock[] {

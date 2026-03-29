@@ -1,4 +1,5 @@
 import {
+  House,
   Inbox,
   CircleDot,
   Target,
@@ -7,6 +8,7 @@ import {
   History,
   Search,
   SquarePen,
+  Sparkles,
   Network,
   Boxes,
   Repeat,
@@ -26,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
 
 export function Sidebar() {
-  const { openNewIssue } = useDialog();
+  const { openNewIssue, openMasterPlanner } = useDialog();
   const { selectedCompanyId, selectedCompany } = useCompany();
   const inboxBadge = useInboxBadge(selectedCompanyId);
   const { data: liveRuns } = useQuery({
@@ -79,6 +81,14 @@ export function Sidebar() {
             <SquarePen className="h-4 w-4 shrink-0" />
             <span className="truncate">New Issue</span>
           </button>
+          <button
+            onClick={() => openMasterPlanner()}
+            className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+          >
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="truncate">Plan With AI</span>
+          </button>
+          <SidebarNavItem to="/overview" label="Overview" icon={House} />
           <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
           <SidebarNavItem
             to="/inbox"

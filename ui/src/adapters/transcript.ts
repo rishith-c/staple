@@ -4,6 +4,16 @@ import type { TranscriptEntry, StdoutLineParser } from "./types";
 export type RunLogChunk = { ts: string; stream: "stdout" | "stderr" | "system"; chunk: string };
 type TranscriptBuildOptions = { censorUsernameInLogs?: boolean };
 
+function shouldHideTranscriptNoise(text: string): boolean {
+  const normalized = text.replace(/\s+/g, " ").trim().toLowerCase();
+  return (
+    normalized.includes("codex_core::models_manager::manager: failed to refresh available models: timeout waiting for child process to exit") ||
+    (normalized.includes("failed to load skill") &&
+      normalized.includes("apple-ui-design/skill.md") &&
+      normalized.includes("invalid yaml"))
+  );
+}
+
 export function appendTranscriptEntry(entries: TranscriptEntry[], entry: TranscriptEntry) {
   if ((entry.kind === "thinking" || entry.kind === "assistant") && entry.delta) {
     const last = entries[entries.length - 1];
@@ -33,6 +43,7 @@ export function buildTranscript(
 
   for (const chunk of chunks) {
     if (chunk.stream === "stderr") {
+      if (shouldHideTranscriptNoise(chunk.chunk)) continue;
       entries.push({ kind: "stderr", ts: chunk.ts, text: redactHomePathUserSegments(chunk.chunk, redactionOptions) });
       continue;
     }

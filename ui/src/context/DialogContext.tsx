@@ -19,6 +19,12 @@ interface OnboardingOptions {
   companyId?: string;
 }
 
+interface MasterPlannerDefaults {
+  prompt?: string;
+  projectId?: string | null;
+  goalId?: string | null;
+}
+
 interface DialogContextValue {
   newIssueOpen: boolean;
   newIssueDefaults: NewIssueDefaults;
@@ -34,6 +40,10 @@ interface DialogContextValue {
   newAgentOpen: boolean;
   openNewAgent: () => void;
   closeNewAgent: () => void;
+  masterPlannerOpen: boolean;
+  masterPlannerDefaults: MasterPlannerDefaults;
+  openMasterPlanner: (defaults?: MasterPlannerDefaults) => void;
+  closeMasterPlanner: () => void;
   onboardingOpen: boolean;
   onboardingOptions: OnboardingOptions;
   openOnboarding: (options?: OnboardingOptions) => void;
@@ -49,6 +59,8 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const [newGoalOpen, setNewGoalOpen] = useState(false);
   const [newGoalDefaults, setNewGoalDefaults] = useState<NewGoalDefaults>({});
   const [newAgentOpen, setNewAgentOpen] = useState(false);
+  const [masterPlannerOpen, setMasterPlannerOpen] = useState(false);
+  const [masterPlannerDefaults, setMasterPlannerDefaults] = useState<MasterPlannerDefaults>({});
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingOptions, setOnboardingOptions] = useState<OnboardingOptions>({});
 
@@ -88,6 +100,16 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     setNewAgentOpen(false);
   }, []);
 
+  const openMasterPlanner = useCallback((defaults: MasterPlannerDefaults = {}) => {
+    setMasterPlannerDefaults(defaults);
+    setMasterPlannerOpen(true);
+  }, []);
+
+  const closeMasterPlanner = useCallback(() => {
+    setMasterPlannerOpen(false);
+    setMasterPlannerDefaults({});
+  }, []);
+
   const openOnboarding = useCallback((options: OnboardingOptions = {}) => {
     setOnboardingOptions(options);
     setOnboardingOpen(true);
@@ -115,6 +137,10 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         newAgentOpen,
         openNewAgent,
         closeNewAgent,
+        masterPlannerOpen,
+        masterPlannerDefaults,
+        openMasterPlanner,
+        closeMasterPlanner,
         onboardingOpen,
         onboardingOptions,
         openOnboarding,

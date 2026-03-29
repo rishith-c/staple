@@ -45,13 +45,15 @@ const mockLogActivity = vi.hoisted(() => vi.fn());
 const mockFetchAllQuotaWindows = vi.hoisted(() => vi.fn());
 const mockCostService = vi.hoisted(() => ({
   createEvent: vi.fn(),
-  summary: vi.fn().mockResolvedValue({ spendCents: 0 }),
+  summary: vi.fn().mockResolvedValue({ spendCents: 0, estimatedUnbilledSpendCents: 0, displaySpendCents: 0 }),
   byAgent: vi.fn().mockResolvedValue([]),
   byAgentModel: vi.fn().mockResolvedValue([]),
   byProvider: vi.fn().mockResolvedValue([]),
   byBiller: vi.fn().mockResolvedValue([]),
   windowSpend: vi.fn().mockResolvedValue([]),
   byProject: vi.fn().mockResolvedValue([]),
+  byRuntimeProject: vi.fn().mockResolvedValue([]),
+  usageLog: vi.fn().mockResolvedValue([]),
 }));
 const mockFinanceService = vi.hoisted(() => ({
   createEvent: vi.fn(),
@@ -181,6 +183,24 @@ describe("cost routes", () => {
       .query({ limit: "25" });
     expect(res.status).toBe(200);
     expect(mockFinanceService.list).toHaveBeenCalledWith("company-1", undefined, 25);
+  });
+
+  it("returns runtime usage grouped by project", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/companies/company-1/costs/by-runtime-project")
+      .query({ from: "2026-02-01T00:00:00.000Z", to: "2026-02-28T23:59:59.999Z" });
+    expect(res.status).toBe(200);
+    expect(mockCostService.byRuntimeProject).toHaveBeenCalled();
+  });
+
+  it("returns usage log rows for valid requests", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .get("/api/companies/company-1/costs/usage-log")
+      .query({ limit: "25" });
+    expect(res.status).toBe(200);
+    expect(mockCostService.usageLog).toHaveBeenCalledWith("company-1", undefined, 25);
   });
 
   it("rejects company budget updates for board users outside the company", async () => {

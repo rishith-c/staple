@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { projectsApi } from "../api/projects";
+import { issuesApi } from "../api/issues";
 import { agentsApi } from "../api/agents";
 import { goalsApi } from "../api/goals";
 import { assetsApi } from "../api/assets";
@@ -58,6 +59,11 @@ export function NewProjectDialog() {
   const [workspaceLocalPath, setWorkspaceLocalPath] = useState("");
   const [workspaceRepoUrl, setWorkspaceRepoUrl] = useState("");
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [createFileRequestEnabled, setCreateFileRequestEnabled] = useState(false);
+  const [createFileAgentId, setCreateFileAgentId] = useState("");
+  const [createFilePath, setCreateFilePath] = useState("");
+  const [createFileInstructions, setCreateFileInstructions] = useState("");
+  const [creationError, setCreationError] = useState<string | null>(null);
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
@@ -114,6 +120,11 @@ export function NewProjectDialog() {
     setWorkspaceLocalPath("");
     setWorkspaceRepoUrl("");
     setWorkspaceError(null);
+    setCreateFileRequestEnabled(false);
+    setCreateFileAgentId("");
+    setCreateFilePath("");
+    setCreateFileInstructions("");
+    setCreationError(null);
   }
 
   const isAbsolutePath = (value: string) => value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
@@ -160,8 +171,21 @@ export function NewProjectDialog() {
       setWorkspaceError("Repo must use a valid GitHub repo URL.");
       return;
     }
+    if (createFileRequestEnabled && !createFileAgentId) {
+      setCreationError("Pick an agent for the file creation request.");
+      return;
+    }
+    if (createFileRequestEnabled && !createFilePath.trim()) {
+      setCreationError("Add the file path you want the agent to create.");
+      return;
+    }
+    if (createFileRequestEnabled && !localPath && !repoUrl) {
+      setCreationError("Add a repo URL or local folder so the agent has a real project workspace to edit.");
+      return;
+    }
 
     setWorkspaceError(null);
+    setCreationError(null);
 
     try {
       const created = await createProject.mutateAsync({
@@ -173,6 +197,7 @@ export function NewProjectDialog() {
         ...(targetDate ? { targetDate } : {}),
       });
 
+      let createdWorkspaceId: string | null = null;
       if (localPath || repoUrl) {
         const workspacePayload: Record<string, unknown> = {
           name: localPath
@@ -181,15 +206,42 @@ export function NewProjectDialog() {
           ...(localPath ? { cwd: localPath } : {}),
           ...(repoUrl ? { repoUrl } : {}),
         };
-        await projectsApi.createWorkspace(created.id, workspacePayload);
+        const createdWorkspace = await projectsApi.createWorkspace(created.id, workspacePayload);
+        createdWorkspaceId = createdWorkspace.id;
+      }
+
+      if (createFileRequestEnabled) {
+        await issuesApi.create(selectedCompanyId, {
+          projectId: created.id,
+          ...(createdWorkspaceId ? { projectWorkspaceId: createdWorkspaceId } : {}),
+          title: `Create ${createFilePath.trim()}`,
+          description: [
+            `Create the file \`${createFilePath.trim()}\` in the primary workspace for project "${created.name}".`,
+            "Requirements:",
+            "- Create the file if it does not exist.",
+            "- If the file already exists, update it in place instead of making a duplicate.",
+            "- Keep the change scoped to this single file unless a small supporting edit is strictly necessary.",
+            "- Reply with what you created and where you wrote it.",
+            "",
+            createFileInstructions.trim() || "No extra instructions were provided.",
+          ].join("\n"),
+          status: "backlog",
+          priority: "high",
+          assigneeAgentId: createFileAgentId,
+          executionWorkspacePreference: "shared_workspace",
+          assigneeAdapterOverrides: {
+            useProjectWorkspace: true,
+          },
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.list(selectedCompanyId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(created.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId) });
       reset();
       closeNewProject();
-    } catch {
-      // surface through createProject.isError
+    } catch (error) {
+      setCreationError(error instanceof Error ? error.message : "Failed to create project.");
     }
   }
 
@@ -332,6 +384,68 @@ export function NewProjectDialog() {
           {workspaceError && (
             <p className="text-xs text-destructive">{workspaceError}</p>
           )}
+
+          <div className="space-y-2 rounded-md border border-border/70 bg-muted/15 p-3">
+            <label className="flex items-center justify-between gap-3 text-xs text-foreground">
+              <span>Ask an agent to create a file after project creation</span>
+              <input
+                type="checkbox"
+                checked={createFileRequestEnabled}
+                onChange={(e) => {
+                  setCreateFileRequestEnabled(e.target.checked);
+                  if (!e.target.checked) {
+                    setCreateFileAgentId("");
+                    setCreateFilePath("");
+                    setCreateFileInstructions("");
+                    setCreationError(null);
+                  }
+                }}
+              />
+            </label>
+            {createFileRequestEnabled ? (
+              <div className="space-y-2">
+                <select
+                  className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs outline-none"
+                  value={createFileAgentId}
+                  onChange={(e) => {
+                    setCreateFileAgentId(e.target.value);
+                    setCreationError(null);
+                  }}
+                >
+                  <option value="">Assign agent…</option>
+                  {(agents ?? [])
+                    .filter((agent) => agent.status !== "terminated")
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                </select>
+                <input
+                  className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs font-mono outline-none"
+                  value={createFilePath}
+                  onChange={(e) => {
+                    setCreateFilePath(e.target.value);
+                    setCreationError(null);
+                  }}
+                  placeholder="docs/README.md"
+                />
+                <textarea
+                  className="min-h-[88px] w-full rounded border border-border bg-transparent px-2 py-2 text-xs outline-none"
+                  value={createFileInstructions}
+                  onChange={(e) => {
+                    setCreateFileInstructions(e.target.value);
+                    setCreationError(null);
+                  }}
+                  placeholder="Tell the agent what should go in the file."
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  This creates a real assigned issue after the project and workspace are created, so the normal agent wakeup flow can execute it.
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {/* Property chips */}
@@ -431,8 +545,8 @@ export function NewProjectDialog() {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-border">
-          {createProject.isError ? (
-            <p className="text-xs text-destructive">Failed to create project.</p>
+          {createProject.isError || creationError ? (
+            <p className="text-xs text-destructive">{creationError ?? "Failed to create project."}</p>
           ) : (
             <span />
           )}

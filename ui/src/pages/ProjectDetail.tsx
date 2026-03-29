@@ -304,6 +304,31 @@ export function ProjectDetail() {
     },
   });
 
+  const deleteProject = useMutation({
+    mutationFn: async () => {
+      if (!resolvedCompanyId || !project) throw new Error("Project is unavailable");
+      return projectsApi.remove(project.id, resolvedCompanyId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.list(resolvedCompanyId!) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(resolvedCompanyId!) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(resolvedCompanyId!) });
+      pushToast({
+        title: "Project deleted",
+        body: `${project?.name ?? "Project"} was removed.`,
+        tone: "success",
+      });
+      navigate("/projects");
+    },
+    onError: (error) => {
+      pushToast({
+        title: "Failed to delete project",
+        body: error instanceof Error ? error.message : "Unknown error",
+        tone: "error",
+      });
+    },
+  });
+
   const uploadImage = useMutation({
     mutationFn: async (file: File) => {
       if (!resolvedCompanyId) throw new Error("No company selected");
@@ -598,6 +623,8 @@ export function ProjectDetail() {
             getFieldSaveState={(field) => fieldSaveStates[field] ?? "idle"}
             onArchive={(archived) => archiveProject.mutate(archived)}
             archivePending={archiveProject.isPending}
+            onDelete={() => deleteProject.mutate()}
+            deletePending={deleteProject.isPending}
           />
         </div>
       )}

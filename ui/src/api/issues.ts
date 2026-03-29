@@ -1,5 +1,6 @@
 import type {
   Approval,
+  ApplyMasterPromptPlan,
   DocumentRevision,
   Issue,
   IssueAttachment,
@@ -7,6 +8,8 @@ import type {
   IssueDocument,
   IssueLabel,
   IssueWorkProduct,
+  MasterPromptPlanPreviewResult,
+  OrgSuggestionPreviewResult,
   UpsertIssueDocument,
 } from "@stapleai/shared";
 import { api } from "./client";
@@ -59,6 +62,12 @@ export const issuesApi = {
     api.delete<{ id: string; archivedAt: Date } | { ok: true }>(`/issues/${id}/inbox-archive`),
   create: (companyId: string, data: Record<string, unknown>) =>
     api.post<Issue>(`/companies/${companyId}/issues`, data),
+  previewMasterPlan: (companyId: string, data: { prompt: string; projectId?: string | null; goalId?: string | null }) =>
+    api.post<MasterPromptPlanPreviewResult>(`/companies/${companyId}/master-plan/preview`, data),
+  previewOrgSuggestion: (companyId: string, data: { prompt: string; projectId?: string | null; goalId?: string | null }) =>
+    api.post<OrgSuggestionPreviewResult>(`/companies/${companyId}/org-suggestion/preview`, data),
+  applyMasterPlan: (companyId: string, data: ApplyMasterPromptPlan) =>
+    api.post<{ title: string; summary: string; issues: Issue[] }>(`/companies/${companyId}/master-plan/apply`, data),
   update: (id: string, data: Record<string, unknown>) => api.patch<Issue>(`/issues/${id}`, data),
   remove: (id: string) => api.delete<Issue>(`/issues/${id}`),
   checkout: (id: string, agentId: string) =>

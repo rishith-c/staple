@@ -3,12 +3,15 @@ import multer from "multer";
 import type { Db } from "@stapleai/db";
 import {
   addIssueCommentSchema,
+  applyMasterPromptPlanSchema,
   createIssueAttachmentMetadataSchema,
   createIssueWorkProductSchema,
   createIssueLabelSchema,
   checkoutIssueSchema,
   createIssueSchema,
   linkIssueApprovalSchema,
+  previewMasterPromptPlanSchema,
+  previewOrgSuggestionSchema,
   issueDocumentKeySchema,
   updateIssueWorkProductSchema,
   upsertIssueDocumentSchema,
@@ -36,6 +39,7 @@ import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { shouldWakeAssigneeOnCheckout } from "./issues-checkout-wakeup.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { queueIssueAssignmentWakeup } from "../services/issue-assignment-wakeup.js";
+import { masterPromptPlanningService } from "../services/master-prompt-planning.js";
 
 const MAX_ISSUE_COMMENT_LIMIT = 500;
 
@@ -52,6 +56,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
   const workProductsSvc = workProductService(db);
   const documentsSvc = documentService(db);
   const routinesSvc = routineService(db);
+  const masterPlanner = masterPromptPlanningService();
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 },
@@ -885,6 +890,119 @@ export function issueRoutes(db: Db, storage: StorageService) {
     });
 
     res.status(201).json(issue);
+  });
+
+  router.post("/companies/:companyId/master-plan/preview", validate(previewMasterPromptPlanSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    await assertCanAssignTasks(req, companyId);
+
+    const [project, goal] = await Promise.all([
+      req.body.projectId ? projectsSvc.getById(req.body.projectId) : Promise.resolve(null),
+      req.body.goalId ? goalsSvc.getById(req.body.goalId) : Promise.resolve(null),
+    ]);
+    const availableAgents = await agentsSvc.list(companyId);
+    const preview = await masterPlanner.preview({
+      prompt: req.body.prompt,
+      agents: availableAgents.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        role: agent.role,
+        title: agent.title,
+        capabilities: agent.capabilities,
+        status: agent.status,
+      })),
+      context: {
+        projectName: project?.name ?? null,
+        projectDescription: project?.description ?? null,
+        goalTitle: goal?.title ?? null,
+        goalDescription: goal?.description ?? null,
+      },
+    });
+    res.json(preview);
+  });
+
+  router.post("/companies/:companyId/org-suggestion/preview", validate(previewOrgSuggestionSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const [project, goal] = await Promise.all([
+      req.body.projectId ? projectsSvc.getById(req.body.projectId) : Promise.resolve(null),
+      req.body.goalId ? goalsSvc.getById(req.body.goalId) : Promise.resolve(null),
+    ]);
+    const preview = await masterPlanner.suggestOrg({
+      prompt: req.body.prompt,
+      context: {
+        projectName: project?.name ?? null,
+        projectDescription: project?.description ?? null,
+        goalTitle: goal?.title ?? null,
+        goalDescription: goal?.description ?? null,
+      },
+    });
+    res.json(preview);
+  });
+
+  router.post("/companies/:companyId/master-plan/apply", validate(applyMasterPromptPlanSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    await assertCanAssignTasks(req, companyId);
+
+    const actor = getActorInfo(req);
+    const normalizedIssues = masterPlanner.normalizeApplyInput(req.body);
+    const createdIssues = [];
+    for (const plannedIssue of normalizedIssues) {
+      const issue = await svc.create(companyId, {
+        projectId: req.body.projectId ?? null,
+        goalId: req.body.goalId ?? null,
+        ...plannedIssue,
+        createdByAgentId: actor.agentId,
+        createdByUserId: actor.actorType === "user" ? actor.actorId : null,
+      });
+
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        runId: actor.runId,
+        action: "issue.created",
+        entityType: "issue",
+        entityId: issue.id,
+        details: { title: issue.title, identifier: issue.identifier, source: "master_plan" },
+      });
+
+      void queueIssueAssignmentWakeup({
+        heartbeat,
+        issue,
+        reason: "issue_assigned",
+        mutation: "create",
+        contextSource: "issue.master_plan.apply",
+        requestedByActorType: actor.actorType,
+        requestedByActorId: actor.actorId,
+      });
+
+      createdIssues.push(issue);
+    }
+
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.master_plan_applied",
+      entityType: "company",
+      entityId: companyId,
+      details: {
+        title: req.body.title,
+        issueCount: createdIssues.length,
+      },
+    });
+
+    res.status(201).json({
+      title: req.body.title,
+      summary: req.body.summary,
+      issues: createdIssues,
+    });
   });
 
   router.patch("/issues/:id", validate(updateIssueSchema), async (req, res) => {

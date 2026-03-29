@@ -37,11 +37,13 @@ import { PluginPage } from "./pages/PluginPage";
 import { RunTranscriptUxLab } from "./pages/RunTranscriptUxLab";
 import { OrgChart } from "./pages/OrgChart";
 import { NewAgent } from "./pages/NewAgent";
+import { Overview } from "./pages/Overview";
 import { AuthPage } from "./pages/Auth";
 import { BoardClaimPage } from "./pages/BoardClaim";
 import { CliAuthPage } from "./pages/CliAuth";
 import { InviteLandingPage } from "./pages/InviteLanding";
 import { NotFoundPage } from "./pages/NotFound";
+import { DocumentationPage } from "./pages/Documentation";
 import { queryKeys } from "./lib/queryKeys";
 import { useCompany } from "./context/CompanyContext";
 import { useDialog } from "./context/DialogContext";
@@ -118,8 +120,10 @@ function CloudAccessGate() {
 function boardRoutes() {
   return (
     <>
-      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route index element={<Navigate to="overview" replace />} />
+      <Route path="overview" element={<Overview />} />
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="documentation" element={<DocumentationPage />} />
       <Route path="onboarding" element={<OnboardingRoutePage />} />
       <Route path="companies" element={<Companies />} />
       <Route path="company/settings" element={<CompanySettings />} />
@@ -288,7 +292,8 @@ function NoCompaniesStartPage() {
       <div className="rounded-lg border border-border bg-card p-6">
         <h1 className="text-xl font-semibold">Create your first company</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Get started by creating a company.
+          Get started by creating a company. The onboarding flow now includes a direct
+          Master Prompt path once the company exists.
         </p>
         <div className="mt-4">
           <Button onClick={() => openOnboarding()}>New Company</Button>

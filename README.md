@@ -197,7 +197,7 @@ This starts the API server at `http://localhost:3100`. An embedded PostgreSQL da
 **What does a typical setup look like?**
 Locally, a single Node.js process manages an embedded Postgres and local file storage. For production, point it at your own Postgres and deploy however you like. Configure projects, agents, and goals — the agents take care of the rest.
 
-If you're a solo-entreprenuer you can use Tailscale to access Staple on the go. Then later you can deploy to e.g. Vercel when you need it.
+If you're a solo-entreprenuer you can use Tailscale to access Staple on the go. Staple is localhost-first: run the Staple server on the machine that owns your agents and workspaces, then expose that machine remotely if you need access away from home.
 
 **Can I run multiple companies?**
 Yes. A single deployment can run an unlimited number of companies with complete data isolation.

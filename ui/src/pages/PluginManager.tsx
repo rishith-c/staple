@@ -71,6 +71,7 @@ export function PluginManager() {
   const [uninstallPluginId, setUninstallPluginId] = useState<string | null>(null);
   const [uninstallPluginName, setUninstallPluginName] = useState<string>("");
   const [errorDetailsPlugin, setErrorDetailsPlugin] = useState<PluginRecord | null>(null);
+  const [docsDialogOpen, setDocsDialogOpen] = useState(false);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -207,11 +208,61 @@ export function PluginManager() {
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <div className="space-y-1 text-sm">
-            <p className="font-medium text-foreground">Plugins are alpha.</p>
-            <p className="text-muted-foreground">
-              The plugin runtime and API surface are still changing. Expect breaking changes while this feature settles.
-            </p>
+          <div className="flex-1 space-y-2 text-sm">
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">Plugins are alpha.</p>
+              <p className="text-muted-foreground">
+                The plugin runtime and API surface are still changing. Expect breaking changes while this feature settles.
+              </p>
+            </div>
+            <Dialog open={docsDialogOpen} onOpenChange={setDocsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="min-h-[36px]">
+                  Plugin docs
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Plugin docs</DialogTitle>
+                  <DialogDescription>
+                    This is the current plugin surface that actually works in this checkout.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 text-sm">
+                  <div className="space-y-2">
+                    <p className="font-medium">What works now</p>
+                    <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                      <li>Install plugins from npm package names or local filesystem paths.</li>
+                      <li>Enable, disable, uninstall, and configure installed plugins from this manager.</li>
+                      <li>Use bundled example plugins from the Available Plugins section below.</li>
+                      <li>Open plugin settings, logs, health, and dashboards after install.</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium">Practical install examples</p>
+                    <div className="rounded-md border border-border bg-muted/20 px-3 py-2 font-mono text-xs text-muted-foreground">
+                      @stapleai/plugin-example
+                    </div>
+                    <div className="rounded-md border border-border bg-muted/20 px-3 py-2 font-mono text-xs text-muted-foreground">
+                      /absolute/path/to/local/plugin
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium">Current limitations</p>
+                    <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                      <li>The API and SDK are still evolving, so plugin upgrades can require code changes.</li>
+                      <li>Local-path installs are meant for development on the same machine as this Staple instance.</li>
+                      <li>Some older spec ideas are future-looking; prefer the current manager behavior and example plugins.</li>
+                    </ul>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDocsDialogOpen(false)}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

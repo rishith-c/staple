@@ -5,6 +5,7 @@ import type { Db } from "@stapleai/db";
 import { agents as agentsTable, companies, heartbeatRuns } from "@stapleai/db";
 import { and, desc, eq, inArray, not, sql } from "drizzle-orm";
 import {
+  AGENT_ROLES,
   agentSkillSyncSchema,
   createAgentKeySchema,
   createAgentHireSchema,
@@ -22,6 +23,7 @@ import {
   wakeAgentSchema,
   updateAgentSchema,
 } from "@stapleai/shared";
+import { z } from "zod";
 import {
   readStapleSkillSyncPreference,
   writeStapleSkillSyncPreference,
@@ -49,6 +51,7 @@ import { redactEventPayload } from "../redaction.js";
 import { redactCurrentUserValue } from "../log-redaction.js";
 import { renderOrgChartSvg, renderOrgChartPng, type OrgNode, type OrgChartStyle, ORG_CHART_STYLES } from "./org-chart-svg.js";
 import { instanceSettingsService } from "../services/instance-settings.js";
+import { logger } from "../middleware/logger.js";
 import { runClaudeLogin } from "@stapleai/adapter-claude-local/server";
 import {
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
@@ -61,6 +64,26 @@ import {
   loadDefaultAgentInstructionsBundle,
   resolveDefaultAgentInstructionsBundleRole,
 } from "../services/default-agent-instructions.js";
+import { readConfigFile } from "../config-file.js";
+
+const agentConfigurationSuggestionSchema = z.object({
+  brief: z.string().trim().min(1),
+});
+
+const agentConfigurationSuggestionResultSchema = z.object({
+  name: z.string().min(1),
+  title: z.string().min(1),
+  role: z.enum(AGENT_ROLES),
+  capabilities: z.string().min(1),
+  adapterType: z.enum(["claude_local", "codex_local", "gemini_local", "opencode_local", "cursor"]),
+  model: z.string(),
+  promptTemplate: z.string().min(1),
+  heartbeatEnabled: z.boolean(),
+  intervalSec: z.number().int().min(60).max(86_400),
+  reasoning: z.array(z.string()),
+  warnings: z.array(z.string()),
+  source: z.enum(["openai", "heuristic"]),
+});
 
 export function agentRoutes(db: Db) {
   const DEFAULT_INSTRUCTIONS_PATH_KEYS: Record<string, string> = {
@@ -94,6 +117,279 @@ export function agentRoutes(db: Db) {
   const workspaceOperations = workspaceOperationService(db);
   const instanceSettings = instanceSettingsService(db);
   const strictSecretsMode = process.env.STAPLE_SECRETS_STRICT_MODE === "true";
+
+  function resolveOpenAiApiKey(): string | null {
+    const envKey = process.env.OPENAI_API_KEY?.trim();
+    if (envKey) return envKey;
+    const config = readConfigFile();
+    if (config?.llm?.provider === "openai" && config.llm.apiKey?.trim()) {
+      return config.llm.apiKey.trim();
+    }
+    return null;
+  }
+
+  function buildHeuristicAgentConfigurationSuggestion(brief: string) {
+    const normalized = brief.trim();
+    const lower = normalized.toLowerCase();
+
+    const isEngineer = /(engineer|developer|dev|frontend|backend|full[-\s]?stack|mobile|ios|android|web)/.test(lower);
+    const isDesigner = /(designer|design|ux|ui|brand)/.test(lower);
+    const isResearcher = /(research|analyst|investigat|market|competitive)/.test(lower);
+    const isQa = /\bqa\b|quality|test|testing/.test(lower);
+    const isDevops = /(devops|infra|infrastructure|platform|sre|deploy|kubernetes|docker)/.test(lower);
+    const isPm = /(product manager|pm\b|product owner|project manager)/.test(lower);
+    const isCto = /\bcto\b|head of engineering|vp engineering/.test(lower);
+    const isIntern = /intern|entry[-\s]?level|apprentice/.test(lower);
+    const isSenior = /senior|staff|principal|lead/.test(lower);
+
+    const role =
+      isCto ? "cto"
+        : isDesigner ? "designer"
+          : isResearcher ? "researcher"
+            : isQa ? "qa"
+              : isDevops ? "devops"
+                : isPm ? "pm"
+                  : isEngineer ? "engineer"
+                    : "general";
+
+    const seniorityLabel =
+      isIntern ? "Intern"
+        : isSenior ? "Senior"
+          : "General";
+
+    const title =
+      role === "engineer"
+        ? (isIntern ? "Software Engineering Intern" : isSenior ? "Senior Software Engineer" : "Software Engineer")
+        : role === "designer"
+          ? (isSenior ? "Senior Product Designer" : "Product Designer")
+          : role === "researcher"
+            ? (isSenior ? "Senior Research Analyst" : "Research Analyst")
+            : role === "qa"
+              ? (isSenior ? "Senior QA Engineer" : "QA Engineer")
+              : role === "devops"
+                ? (isSenior ? "Senior DevOps Engineer" : "DevOps Engineer")
+                : role === "pm"
+                  ? (isSenior ? "Senior Product Manager" : "Product Manager")
+                  : role === "cto"
+                    ? "CTO"
+                    : normalized.length > 0 ? normalized.slice(0, 80) : "General Operator";
+
+    const name =
+      role === "engineer"
+        ? (isIntern ? "Engineering Intern" : isSenior ? "Senior Engineer" : "Engineer")
+        : role === "designer"
+          ? (isSenior ? "Senior Designer" : "Designer")
+          : role === "researcher"
+            ? "Researcher"
+            : role === "qa"
+              ? "QA Engineer"
+              : role === "devops"
+                ? "DevOps Engineer"
+                : role === "pm"
+                  ? "Product Manager"
+                  : role === "cto"
+                    ? "CTO"
+                    : "General Operator";
+
+    const adapterType =
+      role === "engineer" || role === "qa" || role === "devops"
+        ? "codex_local"
+        : role === "researcher"
+          ? "gemini_local"
+          : "claude_local";
+
+    const model =
+      adapterType === "codex_local"
+        ? DEFAULT_CODEX_LOCAL_MODEL
+        : adapterType === "gemini_local"
+          ? DEFAULT_GEMINI_LOCAL_MODEL
+          : "";
+
+    const capabilities =
+      role === "engineer"
+        ? (isIntern
+          ? "Implements well-scoped tasks, writes tests, fixes small bugs, and escalates architecture decisions."
+          : isSenior
+            ? "Designs systems, breaks down projects, reviews implementation plans, mentors junior agents, and ships complex code safely."
+            : "Builds product features, fixes bugs, writes tests, and works across the codebase with moderate autonomy.")
+        : role === "designer"
+          ? "Creates UI/UX concepts, prepares specs, and translates product requirements into polished interfaces."
+          : role === "researcher"
+            ? "Investigates markets, competitors, and technical options, then produces concise decision-ready briefs."
+          : role === "qa"
+            ? "Writes test plans, reproduces bugs, validates fixes, and monitors regression risk."
+          : role === "devops"
+            ? "Maintains environments, deployment workflows, CI/CD, observability, and operational reliability."
+          : role === "pm"
+            ? "Clarifies scope, writes specs, prioritizes work, and keeps execution aligned with outcomes."
+          : role === "cto"
+            ? "Owns technical direction, team structure, architecture, staffing, and engineering quality."
+          : "Handles broad operational tasks, synthesis, and execution support.";
+
+    const heartbeatEnabled = /(support|ops|research|monitor|triage|inbox|qa|review)/.test(lower);
+    const intervalSec =
+      role === "qa" ? 900
+        : role === "researcher" ? 1800
+          : heartbeatEnabled ? 1800
+            : 300;
+
+    const promptTemplate = [
+      `You are the ${title} for this company.`,
+      `Operate with ${isIntern ? "high supervision and narrow task scope" : isSenior ? "high autonomy and strong judgment" : "moderate autonomy"} within your role.`,
+      `Primary responsibilities: ${capabilities}`,
+      role === "engineer"
+        ? "Prefer small, shippable changes with tests and clear handoff notes."
+        : role === "designer"
+          ? "Prefer concrete artifacts, critiques, and implementation-ready specs."
+          : role === "researcher"
+            ? "Prioritize evidence, tradeoffs, and concise recommendations."
+            : "Keep decisions aligned with company goals and escalate ambiguity early.",
+    ].join("\n");
+
+    const reasoning = [
+      `Mapped the request to the ${role} role.`,
+      adapterType === "codex_local"
+        ? "Selected Codex because the role is execution-heavy and code-oriented."
+        : adapterType === "gemini_local"
+          ? "Selected Gemini because the role leans toward research and synthesis."
+          : "Selected Claude because the role needs broader planning and communication.",
+      isIntern
+        ? "Configured a narrower capability set because the hire sounds junior."
+        : isSenior
+          ? "Configured a more autonomous profile because the hire sounds senior."
+          : `Configured a balanced ${seniorityLabel.toLowerCase()} profile.`,
+    ];
+
+    const warnings = [
+      "Review permissions and reporting line before creating the agent.",
+      "Heartbeat should stay off for most implementation roles unless you want scheduled autonomous work.",
+    ];
+
+    return {
+      name,
+      title,
+      role,
+      capabilities,
+      adapterType,
+      model,
+      promptTemplate,
+      heartbeatEnabled,
+      intervalSec,
+      reasoning,
+      warnings,
+      source: "heuristic" as const,
+    };
+  }
+
+  async function suggestAgentConfigurationWithOpenAi(brief: string) {
+    const apiKey = resolveOpenAiApiKey();
+    if (!apiKey) {
+      return buildHeuristicAgentConfigurationSuggestion(brief);
+    }
+
+    const model = process.env.STAPLE_HIRING_AI_MODEL?.trim() || "gpt-4.1-mini";
+    const heuristic = buildHeuristicAgentConfigurationSuggestion(brief);
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: [
+          {
+            role: "system",
+            content: [
+              {
+                type: "input_text",
+                text:
+                  "You draft practical employee/agent configurations for Staple. Return only valid JSON. Prefer codex_local for code-heavy roles, claude_local for planning/writing roles, and gemini_local for research-heavy roles. Keep promptTemplate concise and operational.",
+              },
+            ],
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: [
+                  `Hire brief: ${brief.trim()}`,
+                  "",
+                  "Return a JSON object with:",
+                  "- name",
+                  "- title",
+                  `- role (${AGENT_ROLES.join(", ")})`,
+                  "- capabilities",
+                  "- adapterType (claude_local, codex_local, gemini_local, opencode_local, cursor)",
+                  "- model",
+                  "- promptTemplate",
+                  "- heartbeatEnabled",
+                  "- intervalSec",
+                  "- reasoning (array of short strings)",
+                  "- warnings (array of short strings)",
+                  "",
+                  `Fallback baseline: ${JSON.stringify(heuristic)}`,
+                ].join("\n"),
+              },
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "agent_configuration_suggestion",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                name: { type: "string" },
+                title: { type: "string" },
+                role: { type: "string", enum: [...AGENT_ROLES] },
+                capabilities: { type: "string" },
+                adapterType: { type: "string", enum: ["claude_local", "codex_local", "gemini_local", "opencode_local", "cursor"] },
+                model: { type: "string" },
+                promptTemplate: { type: "string" },
+                heartbeatEnabled: { type: "boolean" },
+                intervalSec: { type: "integer", minimum: 60, maximum: 86400 },
+                reasoning: { type: "array", items: { type: "string" } },
+                warnings: { type: "array", items: { type: "string" } },
+              },
+              required: [
+                "name",
+                "title",
+                "role",
+                "capabilities",
+                "adapterType",
+                "model",
+                "promptTemplate",
+                "heartbeatEnabled",
+                "intervalSec",
+                "reasoning",
+                "warnings",
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI suggestion request failed (${response.status})`);
+    }
+
+    const payload = await response.json() as { output_text?: string };
+    const text = payload.output_text?.trim();
+    if (!text) {
+      throw new Error("OpenAI suggestion response was empty");
+    }
+    const parsed = agentConfigurationSuggestionResultSchema.parse({
+      ...(JSON.parse(text) as Record<string, unknown>),
+      source: "openai",
+    });
+    return parsed;
+  }
 
   async function getCurrentUserRedactionOptions() {
     return {
@@ -955,6 +1251,22 @@ export function agentRoutes(db: Db) {
     const rows = await svc.list(companyId);
     res.json(rows.map((row) => redactAgentConfiguration(row)));
   });
+
+  router.post(
+    "/companies/:companyId/agent-configuration-suggestions",
+    validate(agentConfigurationSuggestionSchema),
+    async (req, res) => {
+      const companyId = req.params.companyId as string;
+      await assertCanCreateAgentsForCompany(req, companyId);
+      try {
+        const suggestion = await suggestAgentConfigurationWithOpenAi(req.body.brief);
+        res.json(suggestion);
+      } catch (error) {
+        logger.warn({ err: error, companyId }, "agent configuration suggestion failed; using heuristic fallback");
+        res.json(buildHeuristicAgentConfigurationSuggestion(req.body.brief));
+      }
+    },
+  );
 
   router.get("/agents/me", async (req, res) => {
     if (req.actor.type !== "agent" || !req.actor.agentId) {

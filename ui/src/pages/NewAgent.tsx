@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Shield } from "lucide-react";
+import { Shield, Sparkles } from "lucide-react";
 import { cn, agentUrl } from "../lib/utils";
 import { roleLabels } from "../components/agent-config-primitives";
 import { AgentConfigForm, type CreateConfigValues } from "../components/AgentConfigForm";
@@ -64,15 +64,25 @@ export function NewAgent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const presetAdapterType = searchParams.get("adapterType");
+  const presetReportsTo = searchParams.get("reportsTo");
+  const presetRole = searchParams.get("role");
+  const presetTitle = searchParams.get("title");
+  const presetName = searchParams.get("name");
+  const presetHireBrief = searchParams.get("hireBrief");
 
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [role, setRole] = useState("general");
+  const [capabilities, setCapabilities] = useState("");
   const [reportsTo, setReportsTo] = useState<string | null>(null);
   const [configValues, setConfigValues] = useState<CreateConfigValues>(defaultCreateValues);
   const [selectedSkillKeys, setSelectedSkillKeys] = useState<string[]>([]);
   const [roleOpen, setRoleOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hireBrief, setHireBrief] = useState("");
+  const [suggestionNotes, setSuggestionNotes] = useState<string[]>([]);
+  const [suggestionWarnings, setSuggestionWarnings] = useState<string[]>([]);
+  const [suggestionSource, setSuggestionSource] = useState<"openai" | "heuristic" | null>(null);
 
   const { data: agents } = useQuery({
     queryKey: queryKeys.agents.list(selectedCompanyId!),
@@ -128,6 +138,32 @@ export function NewAgent() {
     });
   }, [presetAdapterType]);
 
+  useEffect(() => {
+    if (!presetName) return;
+    setName((current) => current || presetName);
+  }, [presetName]);
+
+  useEffect(() => {
+    if (!presetTitle) return;
+    setTitle((current) => current || presetTitle);
+  }, [presetTitle]);
+
+  useEffect(() => {
+    if (!presetHireBrief) return;
+    setHireBrief((current) => current || presetHireBrief);
+  }, [presetHireBrief]);
+
+  useEffect(() => {
+    if (!presetReportsTo || isFirstAgent) return;
+    setReportsTo((current) => current ?? presetReportsTo);
+  }, [isFirstAgent, presetReportsTo]);
+
+  useEffect(() => {
+    if (!presetRole || isFirstAgent) return;
+    if (!AGENT_ROLES.includes(presetRole as (typeof AGENT_ROLES)[number])) return;
+    setRole(presetRole);
+  }, [isFirstAgent, presetRole]);
+
   const createAgent = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       agentsApi.hire(selectedCompanyId!, data),
@@ -138,6 +174,38 @@ export function NewAgent() {
     },
     onError: (error) => {
       setFormError(error instanceof Error ? error.message : "Failed to create agent");
+    },
+  });
+
+  const suggestAgentConfiguration = useMutation({
+    mutationFn: async () => {
+      if (!selectedCompanyId) throw new Error("Select a company first.");
+      if (!hireBrief.trim()) throw new Error("Describe the hire first.");
+      return agentsApi.suggestConfiguration(selectedCompanyId, hireBrief.trim());
+    },
+    onSuccess: (suggestion) => {
+      setFormError(null);
+      setName((current) => current.trim() || suggestion.name);
+      setTitle(suggestion.title);
+      setRole(suggestion.role);
+      setCapabilities(suggestion.capabilities);
+      setSuggestionNotes(suggestion.reasoning);
+      setSuggestionWarnings(suggestion.warnings);
+      setSuggestionSource(suggestion.source);
+      setConfigValues((prev) => {
+        const next = createValuesForAdapterType(suggestion.adapterType);
+        return {
+          ...next,
+          model: suggestion.model || next.model,
+          promptTemplate: suggestion.promptTemplate,
+          heartbeatEnabled: suggestion.heartbeatEnabled,
+          intervalSec: suggestion.intervalSec,
+          envBindings: prev.envBindings,
+        };
+      });
+    },
+    onError: (error) => {
+      setFormError(error instanceof Error ? error.message : "Failed to draft agent configuration");
     },
   });
 
@@ -181,6 +249,7 @@ export function NewAgent() {
       name: name.trim(),
       role: effectiveRole,
       ...(title.trim() ? { title: title.trim() } : {}),
+      ...(capabilities.trim() ? { capabilities: capabilities.trim() } : {}),
       ...(reportsTo ? { reportsTo } : {}),
       ...(selectedSkillKeys.length > 0 ? { desiredSkills: selectedSkillKeys } : {}),
       adapterType: configValues.adapterType,
@@ -219,6 +288,60 @@ export function NewAgent() {
       </div>
 
       <div className="border border-border">
+        <div className="border-b border-border px-4 py-4 space-y-3 bg-muted/20">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium">AI hire draft</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Describe the employee you want, like “engineering intern for bug fixes” or
+                “senior frontend developer who can lead features.”
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!hireBrief.trim() || suggestAgentConfiguration.isPending}
+              onClick={() => suggestAgentConfiguration.mutate()}
+            >
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              {suggestAgentConfiguration.isPending ? "Drafting…" : "Draft with AI"}
+            </Button>
+          </div>
+          <textarea
+            className="min-h-20 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/40"
+            placeholder="Example: Hire a senior backend developer who can own APIs, review code, mentor junior engineers, and work mostly in TypeScript."
+            value={hireBrief}
+            onChange={(e) => setHireBrief(e.target.value)}
+          />
+          {(suggestionNotes.length > 0 || suggestionWarnings.length > 0) && (
+            <div className="space-y-2 rounded-md border border-border bg-background px-3 py-3">
+              <p className="text-xs font-medium text-foreground">
+                Draft source: {suggestionSource === "openai" ? "OpenAI" : "Built-in heuristic"}
+              </p>
+              {suggestionNotes.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Why this config</p>
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {suggestionNotes.map((note) => (
+                      <li key={note}>• {note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {suggestionWarnings.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Review before create</p>
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {suggestionWarnings.map((warning) => (
+                      <li key={warning}>• {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Name */}
         <div className="px-4 pt-4 pb-2">
           <input
@@ -237,6 +360,15 @@ export function NewAgent() {
             placeholder="Title (e.g. VP of Engineering)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div className="px-4 pb-3">
+          <textarea
+            className="min-h-20 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/40"
+            placeholder="Capabilities and expectations for this hire"
+            value={capabilities}
+            onChange={(e) => setCapabilities(e.target.value)}
           />
         </div>
 

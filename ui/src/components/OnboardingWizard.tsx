@@ -75,7 +75,7 @@ const DEFAULT_TASK_DESCRIPTION = `You are the CEO. You set the direction for the
 - break the roadmap into concrete tasks and start delegating work`;
 
 export function OnboardingWizard() {
-  const { onboardingOpen, onboardingOptions, closeOnboarding } = useDialog();
+  const { onboardingOpen, onboardingOptions, closeOnboarding, openMasterPlanner } = useDialog();
   const { companies, setSelectedCompanyId, loading: companiesLoading } = useCompany();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -412,6 +412,46 @@ export function OnboardingWizard() {
     }
   }
 
+  async function handleStep1CreateAndPlan() {
+    setLoading(true);
+    setError(null);
+    try {
+      const company = await companiesApi.create({ name: companyName.trim() });
+      setCreatedCompanyId(company.id);
+      setCreatedCompanyPrefix(company.issuePrefix);
+      setSelectedCompanyId(company.id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+
+      if (companyGoal.trim()) {
+        const parsedGoal = parseOnboardingGoalInput(companyGoal);
+        const goal = await goalsApi.create(company.id, {
+          title: parsedGoal.title,
+          ...(parsedGoal.description
+            ? { description: parsedGoal.description }
+            : {}),
+          level: "company",
+          status: "active"
+        });
+        setCreatedCompanyGoalId(goal.id);
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.goals.list(company.id)
+        });
+      } else {
+        setCreatedCompanyGoalId(null);
+      }
+
+      reset();
+      closeOnboarding();
+      window.requestAnimationFrame(() => {
+        openMasterPlanner();
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create company");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleStep2Next() {
     if (!createdCompanyId) return;
     setLoading(true);
@@ -718,6 +758,17 @@ export function OnboardingWizard() {
                       value={companyGoal}
                       onChange={(e) => setCompanyGoal(e.target.value)}
                     />
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/20 px-3 py-3">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Want to start with one big request?</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Create the company and jump straight into Master Prompt to let AI break the work into issues for your team.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1263,18 +1314,33 @@ export function OnboardingWizard() {
                 </div>
                 <div className="flex items-center gap-2">
                   {step === 1 && (
-                    <Button
-                      size="sm"
-                      disabled={!companyName.trim() || loading}
-                      onClick={handleStep1Next}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                      ) : (
-                        <ArrowRight className="h-3.5 w-3.5 mr-1" />
-                      )}
-                      {loading ? "Creating..." : "Next"}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!companyName.trim() || loading}
+                        onClick={handleStep1CreateAndPlan}
+                      >
+                        {loading ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {loading ? "Creating..." : "Create & Use Master Prompt"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={!companyName.trim() || loading}
+                        onClick={handleStep1Next}
+                      >
+                        {loading ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {loading ? "Creating..." : "Next"}
+                      </Button>
+                    </>
                   )}
                   {step === 2 && (
                     <Button

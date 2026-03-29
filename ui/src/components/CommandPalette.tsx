@@ -28,6 +28,7 @@ import {
   History,
   SquarePen,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { Identity } from "./Identity";
 import { agentUrl, projectUrl } from "../lib/utils";
@@ -37,7 +38,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
-  const { openNewIssue, openNewAgent } = useDialog();
+  const { openNewIssue, openNewAgent, openMasterPlanner } = useDialog();
   const { isMobile, setSidebarOpen } = useSidebar();
   const searchQuery = query.trim();
 
@@ -123,6 +124,15 @@ export function CommandPalette() {
             <SquarePen className="mr-2 h-4 w-4" />
             Create new issue
             <span className="ml-auto text-xs text-muted-foreground">C</span>
+          </CommandItem>
+          <CommandItem
+            onSelect={() => {
+              setOpen(false);
+              openMasterPlanner();
+            }}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Plan with AI
           </CommandItem>
           <CommandItem
             onSelect={() => {

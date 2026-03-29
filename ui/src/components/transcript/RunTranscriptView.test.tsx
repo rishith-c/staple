@@ -81,4 +81,52 @@ describe("RunTranscriptView", () => {
       text: "Working on the task.",
     });
   });
+
+  it("hides known codex model refresh stderr noise from nice mode normalization", () => {
+    const entries: TranscriptEntry[] = [
+      {
+        kind: "stderr",
+        ts: "2026-03-12T00:00:00.000Z",
+        text: "STDERR2026-03-28T21:59:35.639584Z ERROR codex_core::models_manager::manager: failed to refresh available models: timeout waiting for child process to exit",
+      },
+      {
+        kind: "assistant",
+        ts: "2026-03-12T00:00:01.000Z",
+        text: "Continuing with the task.",
+      },
+    ];
+
+    const blocks = normalizeTranscript(entries, false);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatchObject({
+      type: "message",
+      role: "assistant",
+      text: "Continuing with the task.",
+    });
+  });
+
+  it("hides known codex skill yaml stderr noise from nice mode normalization", () => {
+    const entries: TranscriptEntry[] = [
+      {
+        kind: "stderr",
+        ts: "2026-03-12T00:00:00.000Z",
+        text: "STDERR2026-03-28T23:11:19.629512Z ERROR codex_core::codex: failed to load skill /Users/rishith/.codex/skills/apple-ui-design/SKILL.md: invalid YAML: mapping values are not allowed in this context at line 2 column 177",
+      },
+      {
+        kind: "assistant",
+        ts: "2026-03-12T00:00:01.000Z",
+        text: "Working on the request.",
+      },
+    ];
+
+    const blocks = normalizeTranscript(entries, false);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatchObject({
+      type: "message",
+      role: "assistant",
+      text: "Working on the request.",
+    });
+  });
 });

@@ -141,6 +141,23 @@ export {
 } from "./issue.js";
 
 export {
+  masterPromptPlanIssueDraftSchema,
+  previewMasterPromptPlanSchema,
+  masterPromptPlanPreviewResultSchema,
+  orgSuggestionRoleSchema,
+  previewOrgSuggestionSchema,
+  orgSuggestionPreviewResultSchema,
+  applyMasterPromptPlanSchema,
+  type MasterPromptPlanIssueDraft,
+  type PreviewMasterPromptPlan,
+  type MasterPromptPlanPreviewResult,
+  type OrgSuggestionRole,
+  type PreviewOrgSuggestion,
+  type OrgSuggestionPreviewResult,
+  type ApplyMasterPromptPlan,
+} from "./master-plan.js";
+
+export {
   createIssueWorkProductSchema,
   updateIssueWorkProductSchema,
   issueWorkProductTypeSchema,

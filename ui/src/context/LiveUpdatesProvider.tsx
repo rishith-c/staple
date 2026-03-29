@@ -455,7 +455,7 @@ function invalidateHeartbeatQueries(
   queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(companyId) });
   queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(companyId) });
   queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(companyId) });
-  queryClient.invalidateQueries({ queryKey: queryKeys.costs(companyId) });
+  invalidateCostQueries(queryClient, companyId);
   queryClient.invalidateQueries({ queryKey: queryKeys.sidebarBadges(companyId) });
 
   const agentId = readString(payload.agentId);
@@ -463,6 +463,30 @@ function invalidateHeartbeatQueries(
     queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(companyId, agentId) });
   }
+}
+
+function invalidateCostQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  companyId: string,
+) {
+  queryClient.invalidateQueries({
+    predicate: ({ queryKey }) => {
+      if (!Array.isArray(queryKey)) return false;
+      const [head, second] = queryKey;
+      if (head === "costs" && second === companyId) return true;
+      if (head === "usage-by-provider" && second === companyId) return true;
+      if (head === "usage-by-biller" && second === companyId) return true;
+      if (head === "finance-summary" && second === companyId) return true;
+      if (head === "finance-by-biller" && second === companyId) return true;
+      if (head === "finance-by-kind" && second === companyId) return true;
+      if (head === "finance-events" && second === companyId) return true;
+      if (head === "usage-window-spend" && second === companyId) return true;
+      if (head === "usage-quota-windows" && second === companyId) return true;
+      if (head === "finance-bundle" && second === companyId) return true;
+      if (head === "budgets" && queryKey[1] === "overview" && queryKey[2] === companyId) return true;
+      return false;
+    },
+  });
 }
 
 function invalidateActivityQueries(
@@ -533,9 +557,7 @@ function invalidateActivityQueries(
   }
 
   if (entityType === "cost_event") {
-    queryClient.invalidateQueries({ queryKey: queryKeys.costs(companyId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.usageByProvider(companyId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.usageWindowSpend(companyId) });
+    invalidateCostQueries(queryClient, companyId);
     // usageQuotaWindows is intentionally excluded: quota windows come from external provider
     // apis on a 5-minute poll and do not change in response to cost events logged by agents
     return;

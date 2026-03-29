@@ -102,8 +102,19 @@ export function NewAgentDialog() {
     closeNewAgent();
     openNewIssue({
       assigneeAgentId: ceoAgent?.id,
-      title: "Create a new agent",
-      description: "(type in what kind of agent you want here)",
+      title: "Hire a new agent",
+      description: [
+        "Please hire a new agent for this company.",
+        "",
+        "Include:",
+        "- Seniority level",
+        "- Role or discipline",
+        "- Main responsibilities",
+        "- Reporting line",
+        "- Preferred adapter/runtime if known",
+        "",
+        "Example: Hire a senior frontend engineer reporting to the CTO. They should own React UI work, review implementation plans, and mentor junior engineers.",
+      ].join("\n"),
     });
   }
 

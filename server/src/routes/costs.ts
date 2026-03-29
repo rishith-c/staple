@@ -247,6 +247,23 @@ export function costRoutes(db: Db) {
     res.json(rows);
   });
 
+  router.get("/companies/:companyId/costs/by-runtime-project", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const range = parseDateRange(req.query);
+    const rows = await costs.byRuntimeProject(companyId, range);
+    res.json(rows);
+  });
+
+  router.get("/companies/:companyId/costs/usage-log", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const range = parseDateRange(req.query);
+    const limit = parseLimit(req.query);
+    const rows = await costs.usageLog(companyId, range, limit);
+    res.json(rows);
+  });
+
   router.patch("/companies/:companyId/budgets", validate(updateBudgetSchema), async (req, res) => {
     assertBoard(req);
     const companyId = req.params.companyId as string;

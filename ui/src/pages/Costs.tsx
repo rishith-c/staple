@@ -5,6 +5,8 @@ import type {
   CostByAgentModel,
   CostByBiller,
   CostByProviderModel,
+  CostByRuntimeProject,
+  CostUsageLogRow,
   CostWindowSpendRow,
   FinanceEvent,
   QuotaWindow,
@@ -28,12 +30,66 @@ import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useCompany } from "../context/CompanyContext";
 import { useDateRange, PRESET_KEYS, PRESET_LABELS } from "../hooks/useDateRange";
 import { queryKeys } from "../lib/queryKeys";
-import { billingTypeDisplayName, cn, formatCents, formatTokens, providerDisplayName } from "../lib/utils";
+import { billingTypeDisplayName, cn, formatCents, formatDateTime, formatTokens, providerDisplayName, relativeTime } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const NO_COMPANY = "__none__";
+const COSTS_LIVE_REFRESH_MS = 5_000;
+
+const MISCELLANEOUS_PROJECT_LABEL = "Miscellaneous";
+
+function runtimeDisplayName(adapterType: string | null | undefined) {
+  switch (adapterType) {
+    case "claude_local":
+      return "Claude Code";
+    case "codex_local":
+      return "Codex";
+    case "cursor":
+      return "Cursor";
+    case "gemini_local":
+      return "Gemini";
+    case "opencode_local":
+      return "OpenCode";
+    case "pi_local":
+      return "Pi";
+    case "openclaw_gateway":
+      return "OpenClaw Gateway";
+    case "process":
+      return "Process";
+    case "http":
+      return "HTTP";
+    default:
+      return "Other";
+  }
+}
+
+function displayCostValue(input: {
+  costCents: number;
+  estimatedUnbilledCostCents?: number;
+  subscriptionRunCount?: number;
+  hasUsage?: boolean;
+}) {
+  if (input.costCents > 0) return formatCents(input.costCents);
+  if ((input.estimatedUnbilledCostCents ?? 0) > 0) return `~${formatCents(input.estimatedUnbilledCostCents ?? 0)}`;
+  if ((input.subscriptionRunCount ?? 0) > 0 && input.hasUsage) return "Included";
+  return formatCents(0);
+}
+
+function requesterLabel(row: CostUsageLogRow) {
+  if (row.requestedByActorType === "user" && row.requestedByActorId) {
+    return `User ${row.requestedByActorId}`;
+  }
+  if (row.requestedByActorType === "agent" && row.requestedByActorId) {
+    return `Agent ${row.requestedByActorId}`;
+  }
+  if (row.requestedByActorType && row.requestedByActorId) {
+    return `${row.requestedByActorType} ${row.requestedByActorId}`;
+  }
+  if (row.requestedByActorType) return row.requestedByActorType;
+  return "System";
+}
 
 function currentWeekRange(): { from: string; to: string } {
   const now = new Date();
@@ -232,24 +288,25 @@ export function Costs() {
   const { data: spendData, isLoading: spendLoading, error: spendError } = useQuery({
     queryKey: queryKeys.costs(companyId, from || undefined, to || undefined),
     queryFn: async () => {
-      const [summary, byAgent, byProject, byAgentModel] = await Promise.all([
+      const [summary, byAgent, byProject, byAgentModel, byRuntimeProject, usageLog] = await Promise.all([
         costsApi.summary(companyId, from || undefined, to || undefined),
         costsApi.byAgent(companyId, from || undefined, to || undefined),
         costsApi.byProject(companyId, from || undefined, to || undefined),
         costsApi.byAgentModel(companyId, from || undefined, to || undefined),
+        costsApi.byRuntimeProject(companyId, from || undefined, to || undefined),
+        costsApi.usageLog(companyId, from || undefined, to || undefined, 40),
       ]);
-      return { summary, byAgent, byProject, byAgentModel };
+      return { summary, byAgent, byProject, byAgentModel, byRuntimeProject, usageLog };
     },
     enabled: !!selectedCompanyId && customReady,
+    refetchInterval: COSTS_LIVE_REFRESH_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 2_000,
   });
 
   const { data: financeData, isLoading: financeLoading, error: financeError } = useQuery({
-    queryKey: [
-      queryKeys.financeSummary(companyId, from || undefined, to || undefined),
-      queryKeys.financeByBiller(companyId, from || undefined, to || undefined),
-      queryKeys.financeByKind(companyId, from || undefined, to || undefined),
-      queryKeys.financeEvents(companyId, from || undefined, to || undefined, 18),
-    ],
+    queryKey: ["finance-bundle", companyId, from || null, to || null],
     queryFn: async () => {
       const [summary, byBiller, byKind, events] = await Promise.all([
         costsApi.financeSummary(companyId, from || undefined, to || undefined),
@@ -260,6 +317,10 @@ export function Costs() {
       return { summary, byBiller, byKind, events };
     },
     enabled: !!selectedCompanyId && customReady,
+    refetchInterval: COSTS_LIVE_REFRESH_MS,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 2_000,
   });
 
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
@@ -518,6 +579,9 @@ export function Costs() {
       (sum, row) => sum + row.inputTokens + row.cachedInputTokens + row.outputTokens,
       0,
     );
+  const hasUsageWithoutSpend = (spendData?.summary.displaySpendCents ?? 0) === 0 && inferenceTokenTotal > 0;
+  const runtimeProjectRows = (spendData?.byRuntimeProject ?? []) as CostByRuntimeProject[];
+  const usageLogRows = (spendData?.usageLog ?? []) as CostUsageLogRow[];
 
   const topFinanceEvents = (financeData?.events ?? []) as FinanceEvent[];
   const budgetPolicies = budgetData?.policies ?? [];
@@ -582,8 +646,12 @@ export function Costs() {
           <div className="grid gap-3 lg:grid-cols-4">
             <MetricTile
               label="Inference spend"
-              value={formatCents(spendData?.summary.spendCents ?? 0)}
-              subtitle={`${formatTokens(inferenceTokenTotal)} tokens across request-scoped events`}
+              value={formatCents(spendData?.summary.displaySpendCents ?? 0)}
+              subtitle={
+                (spendData?.summary.estimatedUnbilledSpendCents ?? 0) > 0
+                  ? `${formatCents(spendData?.summary.spendCents ?? 0)} billed + ${formatCents(spendData?.summary.estimatedUnbilledSpendCents ?? 0)} estimated`
+                  : `${formatTokens(inferenceTokenTotal)} tokens across request-scoped events`
+              }
               icon={DollarSign}
             />
             <MetricTile
@@ -597,7 +665,7 @@ export function Costs() {
                 activeBudgetIncidents.length > 0
                   ? `${budgetData?.pausedAgentCount ?? 0} agents paused · ${budgetData?.pausedProjectCount ?? 0} projects paused`
                   : spendData?.summary.budgetCents && spendData.summary.budgetCents > 0
-                    ? `${formatCents(spendData.summary.spendCents)} of ${formatCents(spendData.summary.budgetCents)}`
+                    ? `${formatCents(spendData.summary.displaySpendCents)} of ${formatCents(spendData.summary.budgetCents)}`
                     : "No monthly cap configured"
               }
               icon={Coins}
@@ -666,12 +734,16 @@ export function Costs() {
                     <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
                         <div className="text-3xl font-semibold tabular-nums">
-                          {formatCents(spendData?.summary.spendCents ?? 0)}
+                          {formatCents(spendData?.summary.displaySpendCents ?? 0)}
                         </div>
                         <div className="mt-1 text-sm text-muted-foreground">
-                          {spendData?.summary.budgetCents && spendData.summary.budgetCents > 0
-                            ? `Budget ${formatCents(spendData.summary.budgetCents)}`
-                            : "Unlimited budget"}
+                          {(spendData?.summary.estimatedUnbilledSpendCents ?? 0) > 0
+                            ? `${formatCents(spendData?.summary.spendCents ?? 0)} billed + ${formatCents(spendData?.summary.estimatedUnbilledSpendCents ?? 0)} estimated from model pricing`
+                            : hasUsageWithoutSpend
+                              ? "Usage was reported, but these runtimes did not return billable dollar totals."
+                            : spendData?.summary.budgetCents && spendData.summary.budgetCents > 0
+                              ? `Budget ${formatCents(spendData.summary.budgetCents)}`
+                              : "Unlimited budget"}
                         </div>
                       </div>
                       <div className="border border-border px-4 py-3 text-right">
@@ -699,6 +771,17 @@ export function Costs() {
                         <div className="text-xs text-muted-foreground">
                           {spendData.summary.utilizationPercent}% of monthly budget consumed in this range.
                         </div>
+                      </div>
+                    ) : null}
+                    {hasUsageWithoutSpend ? (
+                      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+                        Claude Code, Codex, and similar local runtimes may report token usage without returning an authoritative dollar amount.
+                        Usage below is real runtime usage, even when spend is $0.00.
+                      </div>
+                    ) : null}
+                    {(spendData?.summary.estimatedUnbilledSpendCents ?? 0) > 0 ? (
+                      <div className="rounded-md border border-sky-500/30 bg-sky-500/5 px-3 py-2 text-xs text-muted-foreground">
+                        Estimated spend is API-equivalent math from the recorded model and token counts. It is not invoice-authoritative, but it is much closer than a fake zero.
                       </div>
                     ) : null}
                   </CardContent>
@@ -744,8 +827,15 @@ export function Costs() {
                                 <Identity name={row.agentName ?? row.agentId} size="sm" />
                                 {row.agentStatus === "terminated" ? <StatusBadge status="terminated" /> : null}
                               </div>
-                              <div className="text-right text-sm tabular-nums">
-                                <div className="font-medium">{formatCents(row.costCents)}</div>
+                                <div className="text-right text-sm tabular-nums">
+                                <div className="font-medium">
+                                  {displayCostValue({
+                                    costCents: row.costCents,
+                                    estimatedUnbilledCostCents: row.estimatedUnbilledCostCents,
+                                    subscriptionRunCount: row.subscriptionRunCount,
+                                    hasUsage: row.inputTokens + row.cachedInputTokens + row.outputTokens > 0,
+                                  })}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   in {formatTokens(row.inputTokens + row.cachedInputTokens)} · out {formatTokens(row.outputTokens)}
                                 </div>
@@ -758,13 +848,23 @@ export function Costs() {
                                       : "0 subscription"}
                                   </div>
                                 ) : null}
+                                {row.lastOccurredAt ? (
+                                  <div
+                                    className="text-xs text-muted-foreground"
+                                    title={formatDateTime(row.lastOccurredAt)}
+                                  >
+                                    last used {relativeTime(row.lastOccurredAt)}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
 
                             {isExpanded && modelRows.length > 0 ? (
                               <div className="mt-3 space-y-2 border-l border-border pl-4">
                                 {modelRows.map((modelRow) => {
-                                  const sharePct = row.costCents > 0 ? Math.round((modelRow.costCents / row.costCents) * 100) : 0;
+                                  const rowDisplayCost = row.costCents + row.estimatedUnbilledCostCents;
+                                  const modelDisplayCost = modelRow.costCents + modelRow.estimatedUnbilledCostCents;
+                                  const sharePct = rowDisplayCost > 0 ? Math.round((modelDisplayCost / rowDisplayCost) * 100) : 0;
                                   return (
                                     <div
                                       key={`${modelRow.provider}:${modelRow.model}:${modelRow.billingType}`}
@@ -782,8 +882,14 @@ export function Costs() {
                                       </div>
                                       <div className="text-right tabular-nums">
                                         <div className="font-medium">
-                                          {formatCents(modelRow.costCents)}
-                                          <span className="ml-1 font-normal text-muted-foreground">({sharePct}%)</span>
+                                          {displayCostValue({
+                                            costCents: modelRow.costCents,
+                                            estimatedUnbilledCostCents: modelRow.estimatedUnbilledCostCents,
+                                            hasUsage: modelRow.inputTokens + modelRow.cachedInputTokens + modelRow.outputTokens > 0,
+                                          })}
+                                          {(modelRow.costCents + modelRow.estimatedUnbilledCostCents) > 0 ? (
+                                            <span className="ml-1 font-normal text-muted-foreground">({sharePct}%)</span>
+                                          ) : null}
                                         </div>
                                         <div className="text-muted-foreground">
                                           {formatTokens(modelRow.inputTokens + modelRow.cachedInputTokens + modelRow.outputTokens)} tok
@@ -809,15 +915,152 @@ export function Costs() {
                     </CardHeader>
                     <CardContent className="space-y-2 px-5 pb-5 pt-2">
                       {(spendData?.byProject.length ?? 0) === 0 ? (
-                        <p className="text-sm text-muted-foreground">No project-attributed run costs yet.</p>
+                        <p className="text-sm text-muted-foreground">No project-attributed usage yet.</p>
                       ) : (
                         spendData?.byProject.map((row, index) => (
+                            <div
+                              key={row.projectId ?? `unattributed-${index}`}
+                              className="flex items-center justify-between gap-3 border border-border px-3 py-2 text-sm"
+                            >
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {row.projectName ?? row.projectId ?? MISCELLANEOUS_PROJECT_LABEL}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatTokens(row.inputTokens + row.cachedInputTokens + row.outputTokens)} total tokens
+                              </div>
+                              {row.lastOccurredAt ? (
+                                <div className="text-xs text-muted-foreground" title={formatDateTime(row.lastOccurredAt)}>
+                                  last used {relativeTime(row.lastOccurredAt)}
+                                </div>
+                              ) : null}
+                            </div>
+                            <span className="font-medium tabular-nums">
+                              {displayCostValue({
+                                costCents: row.costCents,
+                                estimatedUnbilledCostCents: row.estimatedUnbilledCostCents,
+                                hasUsage: row.inputTokens + row.cachedInputTokens + row.outputTokens > 0,
+                              })}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="px-5 pt-5 pb-2">
+                      <CardTitle className="text-base">Claude / Codex usage by project</CardTitle>
+                      <CardDescription>
+                        Runtime usage grouped by engine and project. Work without a project is grouped under Miscellaneous.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 px-5 pb-5 pt-2">
+                      {runtimeProjectRows.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No runtime usage yet.</p>
+                      ) : (
+                        runtimeProjectRows.map((row, index) => {
+                          const totalTokens = row.inputTokens + row.cachedInputTokens + row.outputTokens;
+                          return (
+                            <div
+                              key={`${row.adapterType ?? "other"}:${row.projectId ?? "misc"}:${index}`}
+                              className="flex items-start justify-between gap-3 border border-border px-3 py-2 text-sm"
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate font-medium">
+                                  {runtimeDisplayName(row.adapterType)}
+                                  <span className="mx-1 text-border">/</span>
+                                  {row.projectName ?? row.projectId ?? MISCELLANEOUS_PROJECT_LABEL}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatTokens(totalTokens)} tokens · {row.runCount} runs · {row.agentCount} agent{row.agentCount === 1 ? "" : "s"}
+                                </div>
+                                {row.lastOccurredAt ? (
+                                  <div className="text-xs text-muted-foreground" title={formatDateTime(row.lastOccurredAt)}>
+                                    last used {relativeTime(row.lastOccurredAt)}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="text-right tabular-nums">
+                                <div className="font-medium">
+                                  {displayCostValue({
+                                    costCents: row.costCents,
+                                    estimatedUnbilledCostCents: row.estimatedUnbilledCostCents,
+                                    subscriptionRunCount: row.runCount,
+                                    hasUsage: totalTokens > 0,
+                                  })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  in {formatTokens(row.inputTokens + row.cachedInputTokens)} · out {formatTokens(row.outputTokens)}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="px-5 pt-5 pb-2">
+                      <CardTitle className="text-base">Request ledger</CardTitle>
+                      <CardDescription>
+                        Exact run timestamps, requester, project, model, and working folder for recent requests.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 px-5 pb-5 pt-2">
+                      {usageLogRows.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No request-scoped usage yet.</p>
+                      ) : (
+                        usageLogRows.map((row) => (
                           <div
-                            key={row.projectId ?? `unattributed-${index}`}
-                            className="flex items-center justify-between gap-3 border border-border px-3 py-2 text-sm"
+                            key={row.eventId}
+                            className="space-y-1 border border-border px-3 py-2 text-sm"
                           >
-                            <span className="truncate">{row.projectName ?? row.projectId ?? "Unattributed"}</span>
-                            <span className="font-medium tabular-nums">{formatCents(row.costCents)}</span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="truncate font-medium">
+                                  {row.agentName ?? row.agentId}
+                                  <span className="mx-1 text-border">/</span>
+                                  {row.issueTitle ?? row.model}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDateTime(row.requestedAt ?? row.occurredAt)}
+                                  {" · "}
+                                  requested by {requesterLabel(row)}
+                                </div>
+                              </div>
+                              <div className="text-right tabular-nums">
+                                <div className="font-medium">
+                                  {displayCostValue({
+                                    costCents: row.costCents,
+                                    estimatedUnbilledCostCents: row.estimatedUnbilledCostCents,
+                                    hasUsage: row.inputTokens + row.cachedInputTokens + row.outputTokens > 0,
+                                  })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatTokens(row.inputTokens + row.cachedInputTokens + row.outputTokens)} tokens
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {runtimeDisplayName(row.adapterType)}
+                              <span className="mx-1 text-border">/</span>
+                              <span className="font-mono">{row.model}</span>
+                              {" · "}
+                              {row.projectName ?? row.projectId ?? MISCELLANEOUS_PROJECT_LABEL}
+                              {row.triggerDetail ? ` · ${row.triggerDetail}` : ""}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              in {formatTokens(row.inputTokens + row.cachedInputTokens)} · out {formatTokens(row.outputTokens)}
+                              {row.startedAt ? ` · started ${formatDateTime(row.startedAt)}` : ""}
+                              {row.finishedAt ? ` · finished ${formatDateTime(row.finishedAt)}` : ""}
+                            </div>
+                            {row.cwd ? (
+                              <div className="truncate font-mono text-[11px] text-muted-foreground">
+                                {row.cwd}
+                              </div>
+                            ) : null}
                           </div>
                         ))
                       )}
