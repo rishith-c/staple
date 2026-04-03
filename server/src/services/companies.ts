@@ -16,6 +16,8 @@ import {
   issueInboxArchives,
   issueDocuments,
   issueWorkProducts,
+  issueApprovals,
+  issueAttachments,
   projects,
   projectWorkspaces,
   projectGoals,
@@ -288,6 +290,8 @@ export function companyService(db: Db) {
         await tx.delete(issueComments).where(eq(issueComments.companyId, id));
         await tx.delete(issueWorkProducts).where(eq(issueWorkProducts.companyId, id));
         await tx.delete(issueDocuments).where(eq(issueDocuments.companyId, id));
+        await tx.delete(issueAttachments).where(eq(issueAttachments.companyId, id));
+        await tx.delete(issueApprovals).where(eq(issueApprovals.companyId, id));
         await tx.delete(documentRevisions).where(eq(documentRevisions.companyId, id));
         await tx.delete(documents).where(eq(documents.companyId, id));
         await tx.delete(costEvents).where(eq(costEvents.companyId, id));
