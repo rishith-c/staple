@@ -324,7 +324,27 @@ export function App() {
             <Route path="plugins" element={<PluginManager />} />
             <Route path="plugins/:pluginId" element={<PluginSettings />} />
           </Route>
+
+          {/* Unprefixed board routes — redirect to the active company prefix.
+              These must be listed BEFORE the /:companyPrefix catch-all so that
+              known route names are never misinterpreted as company prefixes. */}
+          <Route path="overview" element={<UnprefixedBoardRedirect />} />
+          <Route path="dashboard" element={<UnprefixedBoardRedirect />} />
           <Route path="companies" element={<UnprefixedBoardRedirect />} />
+          <Route path="org" element={<UnprefixedBoardRedirect />} />
+          <Route path="goals" element={<UnprefixedBoardRedirect />} />
+          <Route path="goals/:goalId" element={<UnprefixedBoardRedirect />} />
+          <Route path="costs" element={<UnprefixedBoardRedirect />} />
+          <Route path="activity" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/pending" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/all" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/:approvalId" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/mine" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/recent" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/unread" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/all" element={<UnprefixedBoardRedirect />} />
           <Route path="issues" element={<UnprefixedBoardRedirect />} />
           <Route path="issues/:issueId" element={<UnprefixedBoardRedirect />} />
           <Route path="routines" element={<UnprefixedBoardRedirect />} />
@@ -344,6 +364,10 @@ export function App() {
           <Route path="projects/:projectId/issues/:filter" element={<UnprefixedBoardRedirect />} />
           <Route path="projects/:projectId/configuration" element={<UnprefixedBoardRedirect />} />
           <Route path="tests/ux/runs" element={<UnprefixedBoardRedirect />} />
+
+          {/* Company-prefixed routes (e.g. /DID/dashboard). This catch-all must
+              come AFTER all known top-level path names above so that e.g.
+              /overview is never treated as a company prefix lookup. */}
           <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
           </Route>
