@@ -57,6 +57,10 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     }
   }
 
+  // --- Collection routes (no :companyId param) ---
+  // These must be defined BEFORE /:companyId to avoid Express matching
+  // literal path segments (e.g. "stats", "import") as a companyId param.
+
   router.get("/", async (req, res) => {
     assertBoard(req);
     const result = await svc.list();
@@ -89,28 +93,38 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     });
   });
 
-  router.get("/:companyId", async (req, res) => {
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    // Allow agents (CEO) to read their own company; board always allowed
-    if (req.actor.type !== "agent") {
-      assertBoard(req);
+  router.post("/", validate(createCompanySchema), async (req, res) => {
+    assertBoard(req);
+    if (!(req.actor.source === "local_implicit" || req.actor.isInstanceAdmin)) {
+      throw forbidden("Instance admin required");
     }
-    const company = await svc.getById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "Company not found" });
-      return;
+    const company = await svc.create(req.body);
+    await access.ensureMembership(company.id, "user", req.actor.userId ?? "local-board", "owner", "active");
+    await logActivity(db, {
+      companyId: company.id,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "company.created",
+      entityType: "company",
+      entityId: company.id,
+      details: { name: company.name },
+    });
+    if (company.budgetMonthlyCents > 0) {
+      await budgets.upsertPolicy(
+        company.id,
+        {
+          scopeType: "company",
+          scopeId: company.id,
+          amount: company.budgetMonthlyCents,
+          windowKind: "calendar_month_utc",
+        },
+        req.actor.userId ?? "board",
+      );
     }
-    res.json(company);
+    res.status(201).json(company);
   });
 
-  router.post("/:companyId/export", validate(companyPortabilityExportSchema), async (req, res) => {
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const result = await portability.exportBundle(companyId, req.body);
-    res.json(result);
-  });
-
+  // Board-level import routes — no :companyId prefix, must stay above /:companyId.
   router.post("/import/preview", validate(companyPortabilityPreviewSchema), async (req, res) => {
     assertBoard(req);
     if (req.body.target.mode === "existing_company") {
@@ -143,6 +157,30 @@ export function companyRoutes(db: Db, storage?: StorageService) {
         companyAction: result.company.action,
       },
     });
+    res.json(result);
+  });
+
+  // --- Per-company routes (with :companyId param) ---
+
+  router.get("/:companyId", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    // Allow agents (CEO) to read their own company; board always allowed
+    if (req.actor.type !== "agent") {
+      assertBoard(req);
+    }
+    const company = await svc.getById(companyId);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    res.json(company);
+  });
+
+  router.post("/:companyId/export", validate(companyPortabilityExportSchema), async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const result = await portability.exportBundle(companyId, req.body);
     res.json(result);
   });
 
@@ -208,37 +246,6 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       },
     });
     res.json(result);
-  });
-
-  router.post("/", validate(createCompanySchema), async (req, res) => {
-    assertBoard(req);
-    if (!(req.actor.source === "local_implicit" || req.actor.isInstanceAdmin)) {
-      throw forbidden("Instance admin required");
-    }
-    const company = await svc.create(req.body);
-    await access.ensureMembership(company.id, "user", req.actor.userId ?? "local-board", "owner", "active");
-    await logActivity(db, {
-      companyId: company.id,
-      actorType: "user",
-      actorId: req.actor.userId ?? "board",
-      action: "company.created",
-      entityType: "company",
-      entityId: company.id,
-      details: { name: company.name },
-    });
-    if (company.budgetMonthlyCents > 0) {
-      await budgets.upsertPolicy(
-        company.id,
-        {
-          scopeType: "company",
-          scopeId: company.id,
-          amount: company.budgetMonthlyCents,
-          windowKind: "calendar_month_utc",
-        },
-        req.actor.userId ?? "board",
-      );
-    }
-    res.status(201).json(company);
   });
 
   router.patch("/:companyId", async (req, res) => {
