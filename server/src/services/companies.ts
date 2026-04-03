@@ -272,7 +272,8 @@ export function companyService(db: Db) {
 
     remove: (id: string) =>
       db.transaction(async (tx) => {
-        // Delete from child tables in dependency order
+        // Delete from child tables in dependency order.
+        // activityLog references agentId (FK) so it must be deleted before agents.
         await tx.delete(heartbeatRunEvents).where(eq(heartbeatRunEvents.companyId, id));
         await tx.delete(workspaceOperations).where(eq(workspaceOperations.companyId, id));
         await tx.delete(workspaceRuntimeServices).where(eq(workspaceRuntimeServices.companyId, id));
@@ -313,8 +314,9 @@ export function companyService(db: Db) {
         await tx.delete(projectGoals).where(eq(projectGoals.companyId, id));
         await tx.delete(goals).where(eq(goals.companyId, id));
         await tx.delete(projects).where(eq(projects.companyId, id));
-        await tx.delete(agents).where(eq(agents.companyId, id));
+        // activityLog must be deleted before agents due to FK on agentId
         await tx.delete(activityLog).where(eq(activityLog.companyId, id));
+        await tx.delete(agents).where(eq(agents.companyId, id));
         const rows = await tx
           .delete(companies)
           .where(eq(companies.id, id))
