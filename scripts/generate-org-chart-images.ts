@@ -541,7 +541,7 @@ function renderTree(
 
 const STAPLE_WATERMARK = `<div class="watermark">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M6 4h12v0a2 2 0 0 1 2 2v10a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6V6a2 2 0 0 1 2-2z"/>
+    <path d="M5 3v13a7 7 0 0 0 14 0V3"/>
   </svg>
   Staple
 </div>`;

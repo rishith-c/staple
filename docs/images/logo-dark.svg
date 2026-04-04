@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="140" height="32" viewBox="0 0 140 32" fill="none">
   <g stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="#e4e4e7" stroke-width="2.5" d="M6 2h16v0a2.5 2.5 0 0 1 2.5 2.5v14a7.5 7.5 0 0 1-7.5 7.5h-5a7.5 7.5 0 0 1-7.5-7.5v-14A2.5 2.5 0 0 1 7 2z"/>
+    <path stroke="#e4e4e7" stroke-width="2.5" d="M5 2v16a9 9 0 0 0 18 0V2"/>
   </g>
   <text x="32" y="22" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#e4e4e7">Staple</text>
 </svg>

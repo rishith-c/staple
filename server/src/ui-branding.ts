@@ -134,7 +134,7 @@ function createFaviconDataUrl(background: string, foreground: string): string {
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">',
     `<rect width="24" height="24" rx="6" fill="${background}"/>`,
-    `<path stroke="${foreground}" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h12v0a2 2 0 0 1 2 2v10a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6V6a2 2 0 0 1 2-2z"/>`,
+    `<path stroke="${foreground}" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 3v13a7 7 0 0 0 14 0V3"/>`,
     "</svg>",
   ].join("");
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;

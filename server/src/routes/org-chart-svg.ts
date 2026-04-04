@@ -558,7 +558,7 @@ function treeBounds(ln: LayoutNode): { minX: number; minY: number; maxX: number;
 // Staple logo: scaled icon (~16px) + wordmark (13px), vertically centered
 const STAPLE_LOGO_SVG = `<g>
   <g transform="scale(0.72)" transform-origin="0 0">
-    <path stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M6 4h12v0a2 2 0 0 1 2 2v10a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6V6a2 2 0 0 1 2-2z"/>
+    <path stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M5 3v13a7 7 0 0 0 14 0V3"/>
   </g>
   <text x="22" y="11.5" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="currentColor">Staple</text>
 </g>`;
