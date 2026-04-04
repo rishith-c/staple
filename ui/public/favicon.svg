@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <style>.s{fill:#18181b}@media(prefers-color-scheme:dark){.s{fill:#e4e4e7}}</style>
-  <path class="s" d="M3 9 H21 V13 H18 V22 H15 V13 H9 V22 H6 V13 H3 Z"/>
+  <!-- staple: wide top bar + two legs going down at each end -->
+  <path class="s" d="M2 8 H22 V12 H20 V18 H16 V12 H8 V18 H4 V12 H2 Z"/>
 </svg>
