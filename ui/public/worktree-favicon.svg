@@ -1,14 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="square" stroke-linejoin="miter">
   <style>
-    .staple { stroke: #db2777; }
+    .s { stroke: #db2777; }
     @media (prefers-color-scheme: dark) {
-      .staple { stroke: #f472b6; }
+      .s { stroke: #f472b6; }
     }
   </style>
-  <!-- Left leg -->
-  <line class="staple" x1="5" y1="18" x2="5" y2="10" stroke-width="2.5"/>
-  <!-- Right leg -->
-  <line class="staple" x1="19" y1="18" x2="19" y2="10" stroke-width="2.5"/>
-  <!-- Top crossbar -->
-  <path class="staple" d="M5 10 Q5 6 12 6 Q19 6 19 10" stroke-width="2.5" fill="none"/>
+  <path class="s" stroke-width="2.5" d="M5 19 L5 8 L19 8 L19 19"/>
 </svg>
