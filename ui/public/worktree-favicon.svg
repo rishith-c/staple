@@ -1,9 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
   <style>
-    path { stroke: #db2777; }
+    .staple { stroke: #db2777; }
     @media (prefers-color-scheme: dark) {
-      path { stroke: #f472b6; }
+      .staple { stroke: #f472b6; }
     }
   </style>
-  <path stroke-width="2.5" d="M6 4h12v0a2 2 0 0 1 2 2v10a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6V6a2 2 0 0 1 2-2z"/>
+  <!-- Left leg -->
+  <line class="staple" x1="5" y1="18" x2="5" y2="10" stroke-width="2.5"/>
+  <!-- Right leg -->
+  <line class="staple" x1="19" y1="18" x2="19" y2="10" stroke-width="2.5"/>
+  <!-- Top crossbar -->
+  <path class="staple" d="M5 10 Q5 6 12 6 Q19 6 19 10" stroke-width="2.5" fill="none"/>
 </svg>
