@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Paperclip, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useQueries } from "@tanstack/react-query";
 import {
   DndContext,
@@ -65,6 +65,21 @@ function sortByStoredOrder(companies: Company[]): Company[] {
     sorted.push(c);
   }
   return sorted;
+}
+
+function StapleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M2 7 H22 V11 H21 V19 H17 V11 H7 V19 H3 V11 H2 Z"
+      />
+    </svg>
+  );
 }
 
 function SortableCompanyItem({
@@ -200,9 +215,6 @@ export function CompanyRail() {
     sortByStoredOrder(sidebarCompanies).map((c) => c.id)
   );
 
-  // Re-sync orderedIds from localStorage whenever companies changes.
-  // Handles initial data load (companies starts as [] before query resolves)
-  // and subsequent refetches triggered by live updates.
   useEffect(() => {
     if (sidebarCompanies.length === 0) {
       setOrderedIds([]);
@@ -211,7 +223,6 @@ export function CompanyRail() {
     setOrderedIds(sortByStoredOrder(sidebarCompanies).map((c) => c.id));
   }, [sidebarCompanies]);
 
-  // Sync order across tabs via the native storage event
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== ORDER_STORAGE_KEY) return;
@@ -224,7 +235,6 @@ export function CompanyRail() {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  // Re-derive when companies change (new company added/removed)
   const orderedCompanies = useMemo(() => {
     const byId = new Map(sidebarCompanies.map((c) => [c.id, c]));
     const result: Company[] = [];
@@ -235,14 +245,12 @@ export function CompanyRail() {
         byId.delete(id);
       }
     }
-    // Append any new companies not yet in our order
     for (const c of byId.values()) {
       result.push(c);
     }
     return result;
   }, [sidebarCompanies, orderedIds]);
 
-  // Require 8px of movement before starting a drag to avoid interfering with clicks
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -268,9 +276,9 @@ export function CompanyRail() {
 
   return (
     <div className="flex flex-col items-center w-[72px] shrink-0 h-full bg-background border-r border-border">
-      {/* Staple icon - aligned with top sections (implied line, no visible border) */}
+      {/* Staple logo */}
       <div className="flex items-center justify-center h-12 w-full shrink-0">
-        <Paperclip className="h-5 w-5 text-foreground" />
+        <StapleIcon className="h-5 w-5 text-foreground" />
       </div>
 
       {/* Company list */}
