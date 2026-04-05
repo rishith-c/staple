@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 14">
   <style>.s{fill:#18181b}@media(prefers-color-scheme:dark){.s{fill:#e4e4e7}}</style>
-  <rect class="s" x="0" y="0" width="20" height="4"/>
-  <rect class="s" x="0" y="4" width="3" height="10"/>
-  <rect class="s" x="17" y="4" width="3" height="10"/>
+  <rect class="s" x="0" y="0" width="20" height="2.5"/>
+  <rect class="s" x="0" y="2.5" width="2" height="11.5"/>
+  <rect class="s" x="18" y="2.5" width="2" height="11.5"/>
 </svg>
