@@ -45,39 +45,29 @@ function saveOrder(ids: string[]) {
   localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(ids));
 }
 
-/** Sort companies by stored order, appending any new ones at the end. */
 function sortByStoredOrder(companies: Company[]): Company[] {
   const order = getStoredOrder();
   if (order.length === 0) return companies;
-
   const byId = new Map(companies.map((c) => [c.id, c]));
   const sorted: Company[] = [];
-
   for (const id of order) {
     const c = byId.get(id);
-    if (c) {
-      sorted.push(c);
-      byId.delete(id);
-    }
+    if (c) { sorted.push(c); byId.delete(id); }
   }
-  // Append any companies not in stored order
-  for (const c of byId.values()) {
-    sorted.push(c);
-  }
+  for (const c of byId.values()) sorted.push(c);
   return sorted;
 }
 
+// A staple: wide top bar + two legs at the far left and right edges only
 function StapleIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M2 7 H22 V11 H21 V19 H17 V11 H7 V19 H3 V11 H2 Z"
-      />
+    <svg viewBox="0 0 20 14" className={className} aria-hidden="true">
+      {/* Top bar — full width */}
+      <rect x="0" y="0" width="20" height="4" fill="currentColor" />
+      {/* Left leg */}
+      <rect x="0" y="4" width="3" height="10" fill="currentColor" />
+      {/* Right leg */}
+      <rect x="17" y="4" width="3" height="10" fill="currentColor" />
     </svg>
   );
 }
@@ -95,15 +85,7 @@ function SortableCompanyItem({
   hasUnreadInbox: boolean;
   onSelect: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: company.id });
-
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: company.id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -117,34 +99,16 @@ function SortableCompanyItem({
         <TooltipTrigger asChild>
           <a
             href={`/${company.issuePrefix}/dashboard`}
-            onClick={(e) => {
-              e.preventDefault();
-              onSelect();
-            }}
+            onClick={(e) => { e.preventDefault(); onSelect(); }}
             className="relative flex items-center justify-center group overflow-visible"
           >
-            {/* Selection indicator pill */}
-            <div
-              className={cn(
-                "absolute left-[-14px] w-1 rounded-r-full bg-foreground transition-[height] duration-150",
-                isSelected
-                  ? "h-5"
-                  : "h-0 group-hover:h-2"
-              )}
-            />
-            <div
-              className={cn("relative overflow-visible transition-transform duration-150", isDragging && "scale-105")}
-            >
+            <div className={cn("absolute left-[-14px] w-1 rounded-r-full bg-foreground transition-[height] duration-150", isSelected ? "h-5" : "h-0 group-hover:h-2")} />
+            <div className={cn("relative overflow-visible transition-transform duration-150", isDragging && "scale-105")}>
               <CompanyPatternIcon
                 companyName={company.name}
                 logoUrl={company.logoUrl}
                 brandColor={company.brandColor}
-                className={cn(
-                  isSelected
-                    ? "rounded-[14px]"
-                    : "rounded-[22px] group-hover:rounded-[14px]",
-                  isDragging && "shadow-lg",
-                )}
+                className={cn(isSelected ? "rounded-[14px]" : "rounded-[22px] group-hover:rounded-[14px]", isDragging && "shadow-lg")}
               />
               {hasLiveAgents && (
                 <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10">
@@ -160,9 +124,7 @@ function SortableCompanyItem({
             </div>
           </a>
         </TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8}>
-          <p>{company.name}</p>
-        </TooltipContent>
+        <TooltipContent side="right" sideOffset={8}><p>{company.name}</p></TooltipContent>
       </Tooltip>
     </div>
   );
@@ -175,11 +137,8 @@ export function CompanyRail() {
   const location = useLocation();
   const isInstanceRoute = location.pathname.startsWith("/instance/");
   const highlightedCompanyId = isInstanceRoute ? null : selectedCompanyId;
-  const sidebarCompanies = useMemo(
-    () => companies.filter((company) => company.status !== "archived"),
-    [companies],
-  );
-  const companyIds = useMemo(() => sidebarCompanies.map((company) => company.id), [sidebarCompanies]);
+  const sidebarCompanies = useMemo(() => companies.filter((c) => c.status !== "archived"), [companies]);
+  const companyIds = useMemo(() => sidebarCompanies.map((c) => c.id), [sidebarCompanies]);
 
   const liveRunsQueries = useQueries({
     queries: companyIds.map((companyId) => ({
@@ -195,41 +154,30 @@ export function CompanyRail() {
       refetchInterval: 15_000,
     })),
   });
+
   const hasLiveAgentsByCompanyId = useMemo(() => {
     const result = new Map<string, boolean>();
-    companyIds.forEach((companyId, index) => {
-      result.set(companyId, (liveRunsQueries[index]?.data?.length ?? 0) > 0);
-    });
+    companyIds.forEach((id, i) => result.set(id, (liveRunsQueries[i]?.data?.length ?? 0) > 0));
     return result;
   }, [companyIds, liveRunsQueries]);
+
   const hasUnreadInboxByCompanyId = useMemo(() => {
     const result = new Map<string, boolean>();
-    companyIds.forEach((companyId, index) => {
-      result.set(companyId, (sidebarBadgeQueries[index]?.data?.inbox ?? 0) > 0);
-    });
+    companyIds.forEach((id, i) => result.set(id, (sidebarBadgeQueries[i]?.data?.inbox ?? 0) > 0));
     return result;
   }, [companyIds, sidebarBadgeQueries]);
 
-  // Maintain sorted order in local state, synced from companies + localStorage
-  const [orderedIds, setOrderedIds] = useState<string[]>(() =>
-    sortByStoredOrder(sidebarCompanies).map((c) => c.id)
-  );
+  const [orderedIds, setOrderedIds] = useState<string[]>(() => sortByStoredOrder(sidebarCompanies).map((c) => c.id));
 
   useEffect(() => {
-    if (sidebarCompanies.length === 0) {
-      setOrderedIds([]);
-      return;
-    }
+    if (sidebarCompanies.length === 0) { setOrderedIds([]); return; }
     setOrderedIds(sortByStoredOrder(sidebarCompanies).map((c) => c.id));
   }, [sidebarCompanies]);
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== ORDER_STORAGE_KEY) return;
-      try {
-        const ids: string[] = e.newValue ? JSON.parse(e.newValue) : [];
-        setOrderedIds(ids);
-      } catch { /* ignore malformed data */ }
+      try { setOrderedIds(e.newValue ? JSON.parse(e.newValue) : []); } catch { /* ignore */ }
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
@@ -240,58 +188,35 @@ export function CompanyRail() {
     const result: Company[] = [];
     for (const id of orderedIds) {
       const c = byId.get(id);
-      if (c) {
-        result.push(c);
-        byId.delete(id);
-      }
+      if (c) { result.push(c); byId.delete(id); }
     }
-    for (const c of byId.values()) {
-      result.push(c);
-    }
+    for (const c of byId.values()) result.push(c);
     return result;
   }, [sidebarCompanies, orderedIds]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-
-      const ids = orderedCompanies.map((c) => c.id);
-      const oldIndex = ids.indexOf(active.id as string);
-      const newIndex = ids.indexOf(over.id as string);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      const newIds = arrayMove(ids, oldIndex, newIndex);
-      setOrderedIds(newIds);
-      saveOrder(newIds);
-    },
-    [orderedCompanies]
-  );
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = orderedCompanies.map((c) => c.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newIds = arrayMove(ids, oldIndex, newIndex);
+    setOrderedIds(newIds);
+    saveOrder(newIds);
+  }, [orderedCompanies]);
 
   return (
     <div className="flex flex-col items-center w-[72px] shrink-0 h-full bg-background border-r border-border">
-      {/* Staple logo */}
       <div className="flex items-center justify-center h-12 w-full shrink-0">
-        <StapleIcon className="h-5 w-5 text-foreground" />
+        <StapleIcon className="w-6 h-auto text-foreground" />
       </div>
 
-      {/* Company list */}
       <div className="flex-1 flex flex-col items-center gap-2 py-3 w-full overflow-y-auto overflow-x-hidden scrollbar-none">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={orderedCompanies.map((c) => c.id)}
-            strategy={verticalListSortingStrategy}
-          >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={orderedCompanies.map((c) => c.id)} strategy={verticalListSortingStrategy}>
             {orderedCompanies.map((company) => (
               <SortableCompanyItem
                 key={company.id}
@@ -301,9 +226,7 @@ export function CompanyRail() {
                 hasUnreadInbox={hasUnreadInboxByCompanyId.get(company.id) ?? false}
                 onSelect={() => {
                   setSelectedCompanyId(company.id);
-                  if (isInstanceRoute) {
-                    navigate(`/${company.issuePrefix}/dashboard`);
-                  }
+                  if (isInstanceRoute) navigate(`/${company.issuePrefix}/dashboard`);
                 }}
               />
             ))}
@@ -311,10 +234,8 @@ export function CompanyRail() {
         </DndContext>
       </div>
 
-      {/* Separator before add button */}
       <div className="w-8 h-px bg-border mx-auto shrink-0" />
 
-      {/* Add company button */}
       <div className="flex items-center justify-center py-2 shrink-0">
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
@@ -326,9 +247,7 @@ export function CompanyRail() {
               <Plus className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            <p>Add company</p>
-          </TooltipContent>
+          <TooltipContent side="right" sideOffset={8}><p>Add company</p></TooltipContent>
         </Tooltip>
       </div>
     </div>
