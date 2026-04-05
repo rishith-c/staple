@@ -58,16 +58,12 @@ function sortByStoredOrder(companies: Company[]): Company[] {
   return sorted;
 }
 
-// A staple: wide top bar + two legs at the far left and right edges only
 function StapleIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 14" className={className} aria-hidden="true">
-      {/* Top bar — full width */}
-      <rect x="0" y="0" width="20" height="4" fill="currentColor" />
-      {/* Left leg */}
-      <rect x="0" y="4" width="3" height="10" fill="currentColor" />
-      {/* Right leg */}
-      <rect x="17" y="4" width="3" height="10" fill="currentColor" />
+      <rect x="0" y="0" width="20" height="2.5" fill="currentColor" />
+      <rect x="0" y="2.5" width="2" height="11.5" fill="currentColor" />
+      <rect x="18" y="2.5" width="2" height="11.5" fill="currentColor" />
     </svg>
   );
 }
