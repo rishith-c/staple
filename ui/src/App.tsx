@@ -330,6 +330,7 @@ export function App() {
               known route names are never misinterpreted as company prefixes. */}
           <Route path="overview" element={<UnprefixedBoardRedirect />} />
           <Route path="dashboard" element={<UnprefixedBoardRedirect />} />
+          <Route path="documentation" element={<UnprefixedBoardRedirect />} />
           <Route path="companies" element={<UnprefixedBoardRedirect />} />
           <Route path="org" element={<UnprefixedBoardRedirect />} />
           <Route path="goals" element={<UnprefixedBoardRedirect />} />
