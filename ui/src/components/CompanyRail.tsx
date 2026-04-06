@@ -60,10 +60,10 @@ function sortByStoredOrder(companies: Company[]): Company[] {
 
 function StapleIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 20 14" className={className} aria-hidden="true">
+    <svg viewBox="0 0 20 10" className={className} aria-hidden="true">
       <rect x="0" y="0" width="20" height="2.5" fill="currentColor" />
-      <rect x="0" y="2.5" width="2" height="11.5" fill="currentColor" />
-      <rect x="18" y="2.5" width="2" height="11.5" fill="currentColor" />
+      <rect x="0" y="2.5" width="2" height="7.5" fill="currentColor" />
+      <rect x="18" y="2.5" width="2" height="7.5" fill="currentColor" />
     </svg>
   );
 }
