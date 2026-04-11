@@ -206,18 +206,13 @@ export function CompanyRail() {
 
   return (
     <div className="flex flex-col items-center w-[72px] shrink-0 h-full bg-background border-r border-border">
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Link
-            to="/overview"
-            className="flex items-center justify-center h-12 w-full shrink-0 text-foreground hover:text-foreground/70 transition-colors"
-            aria-label="Go to overview"
-          >
-            <StapleIcon className="w-6 h-auto" />
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8}><p>Overview</p></TooltipContent>
-      </Tooltip>
+      <Link
+        to="/overview"
+        className="flex items-center justify-center h-12 w-full shrink-0 text-foreground hover:text-foreground/70 transition-colors"
+        aria-label="Go to overview"
+      >
+        <StapleIcon className="w-6 h-auto" />
+      </Link>
 
       <div className="flex-1 flex flex-col items-center gap-2 py-3 w-full overflow-y-auto overflow-x-hidden scrollbar-none">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
