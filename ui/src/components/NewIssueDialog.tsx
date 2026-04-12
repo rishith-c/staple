@@ -882,12 +882,6 @@ export function NewIssueDialog() {
             event.preventDefault();
             return;
           }
-          // Radix Dialog's modal DismissableLayer calls preventDefault() on
-          // pointerdown events that originate outside the Dialog DOM tree.
-          // Popover portals render at the body level (outside the Dialog), so
-          // touch events on popover content get their default prevented — which
-          // kills scroll gesture recognition on mobile.  Telling Radix "this
-          // event is handled" skips that preventDefault, restoring touch scroll.
           const target = event.detail.originalEvent.target as HTMLElement | null;
           if (target?.closest("[data-radix-popper-content-wrapper]")) {
             event.preventDefault();
@@ -1001,7 +995,6 @@ export function NewIssueDialog() {
               if (e.key === "Tab" && !e.shiftKey) {
                 e.preventDefault();
                 if (assigneeValue) {
-                  // Assignee already set — skip to project or description
                   if (projectId) {
                     descriptionEditorRef.current?.focus();
                   } else {
@@ -1337,7 +1330,7 @@ export function NewIssueDialog() {
                 {currentStatus.label}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-36 p-1" align="start">
+            <PopoverContent className="w-36 p-1" align="start" side="top">
               {statuses.map((s) => (
                 <button
                   key={s.value}
@@ -1371,7 +1364,7 @@ export function NewIssueDialog() {
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-36 p-1" align="start">
+            <PopoverContent className="w-36 p-1" align="start" side="top">
               {priorities.map((p) => (
                 <button
                   key={p.value}
@@ -1418,7 +1411,7 @@ export function NewIssueDialog() {
                 <MoreHorizontal className="h-3 w-3" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-44 p-1" align="start">
+            <PopoverContent className="w-44 p-1" align="start" side="top">
               <button className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 Start date
