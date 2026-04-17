@@ -26,7 +26,7 @@ export function PriorityIcon({ priority, onChange, className, showLabel }: Prior
   const config = priorityConfig[priority] ?? priorityConfig.medium!;
   const Icon = config.icon;
 
-  const displayIcon = (
+  const triggerIcon = (
     <span
       className={cn(
         "inline-flex items-center justify-center shrink-0",
@@ -39,28 +39,13 @@ export function PriorityIcon({ priority, onChange, className, showLabel }: Prior
     </span>
   );
 
-  const triggerIcon = (
-    <button
-      type="button"
-      className={cn(
-        "inline-flex items-center justify-center shrink-0",
-        config.color,
-        onChange && !showLabel && "cursor-pointer",
-        className
-      )}
-      onClick={() => setOpen(true)}
-    >
-      <Icon className="h-3.5 w-3.5" />
-    </button>
-  );
-
   if (!onChange) {
     return showLabel ? (
       <span className="inline-flex items-center gap-1.5">
-        {displayIcon}
+        {triggerIcon}
         <span className="text-sm">{config.label}</span>
       </span>
-    ) : displayIcon;
+    ) : triggerIcon;
   }
 
   const trigger = showLabel ? (
@@ -68,7 +53,16 @@ export function PriorityIcon({ priority, onChange, className, showLabel }: Prior
       {triggerIcon}
       <span className="text-sm">{config.label}</span>
     </button>
-  ) : triggerIcon;
+  ) : (
+    <button type="button" className={cn(
+      "inline-flex items-center justify-center shrink-0",
+      config.color,
+      "cursor-pointer",
+      className
+    )}>
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
