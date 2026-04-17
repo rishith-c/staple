@@ -88,7 +88,7 @@ function PropertyPicker({
     return (
       <div>
         <PropertyRow label={label}>
-          <button className={btnCn} onClick={() => onOpenChange(!open)}>
+          <button type="button" className={btnCn} onClick={() => onOpenChange(!open)}>
             {triggerContent}
           </button>
           {extra}
@@ -106,7 +106,7 @@ function PropertyPicker({
     <PropertyRow label={label}>
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger asChild>
-          <button className={btnCn}>{triggerContent}</button>
+          <button type="button" className={btnCn}>{triggerContent}</button>
         </PopoverTrigger>
         <PopoverContent className={cn("p-1", popoverClassName)} align={popoverAlign} collisionPadding={16}>
           {children}
