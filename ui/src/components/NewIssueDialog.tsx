@@ -130,8 +130,6 @@ function buildAssigneeAdapterOverrides(input: {
       adapterConfig.variant = input.thinkingEffortOverride;
     } else if (adapterType === "claude_local") {
       adapterConfig.effort = input.thinkingEffortOverride;
-    } else if (adapterType === "opencode_local") {
-      adapterConfig.variant = input.thinkingEffortOverride;
     }
   }
   if (adapterType === "claude_local" && input.chrome) {
@@ -454,7 +452,6 @@ export function NewIssueDialog() {
     },
   });
 
-  // Debounced draft saving
   const scheduleSave = useCallback(
     (draft: IssueDraft) => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
@@ -465,7 +462,6 @@ export function NewIssueDialog() {
     [],
   );
 
-  // Save draft on meaningful changes
   useEffect(() => {
     if (!newIssueOpen) return;
     scheduleSave({
@@ -499,7 +495,6 @@ export function NewIssueDialog() {
     scheduleSave,
   ]);
 
-  // Restore draft or apply defaults when dialog opens
   useEffect(() => {
     if (!newIssueOpen) return;
     setDialogCompanyId(selectedCompanyId);
@@ -582,7 +577,6 @@ export function NewIssueDialog() {
     }
   }, [supportsAssigneeOverrides, assigneeAdapterType, assigneeThinkingEffort]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (draftTimer.current) clearTimeout(draftTimer.current);
@@ -836,6 +830,7 @@ export function NewIssueDialog() {
     setExecutionWorkspaceMode(defaultExecutionWorkspaceModeForProject(project));
     setSelectedExecutionWorkspaceId("");
   }, [newIssueOpen, orderedProjects, projectId]);
+
   const modelOverrideOptions = useMemo<InlineEntityOption[]>(
     () => {
       return [...(assigneeAdapterModels ?? [])]
@@ -888,6 +883,17 @@ export function NewIssueDialog() {
           }
         }}
       >
+        {/* Hidden file input — kept outside chips bar so it doesn't intercept pointer events */}
+        <input
+          ref={stageFileInputRef}
+          type="file"
+          accept={STAGED_FILE_ACCEPT}
+          className="hidden"
+          onChange={handleStageFilesPicked}
+          multiple
+          aria-hidden="true"
+        />
+
         {/* Header bar */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1387,14 +1393,7 @@ export function NewIssueDialog() {
             Labels
           </button>
 
-          <input
-            ref={stageFileInputRef}
-            type="file"
-            accept={STAGED_FILE_ACCEPT}
-            className="hidden"
-            onChange={handleStageFilesPicked}
-            multiple
-          />
+          {/* Upload chip — triggers the hidden input at the top of DialogContent */}
           <button
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/50 transition-colors text-muted-foreground"
             onClick={() => stageFileInputRef.current?.click()}
