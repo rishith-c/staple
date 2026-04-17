@@ -63,7 +63,7 @@ export function StatusIcon({ status, onChange, className, showLabel }: StatusIco
 
   const trigger = showLabel ? (
     <button type="button" className="inline-flex items-center gap-1.5 cursor-pointer hover:bg-accent/50 rounded px-1 -mx-1 py-0.5 transition-colors">
-      {triggerCircle}
+      {displayCircle}
       <span className="text-sm">{statusLabel(status)}</span>
     </button>
   ) : triggerCircle;
