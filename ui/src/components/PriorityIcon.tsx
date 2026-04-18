@@ -26,6 +26,8 @@ export function PriorityIcon({ priority, onChange, className, showLabel }: Prior
   const config = priorityConfig[priority] ?? priorityConfig.medium!;
   const Icon = config.icon;
 
+  console.log("PriorityIcon render:", { priority, onChange: !!onChange, showLabel, open });
+
   const triggerIcon = (
     <span
       className={cn(
@@ -49,17 +51,25 @@ export function PriorityIcon({ priority, onChange, className, showLabel }: Prior
   }
 
   const trigger = showLabel ? (
-    <button type="button" className="inline-flex items-center gap-1.5 cursor-pointer hover:bg-accent/50 rounded px-1 -mx-1 py-0.5 transition-colors">
+    <button 
+      type="button" 
+      className="inline-flex items-center gap-1.5 cursor-pointer hover:bg-accent/50 rounded px-1 -mx-1 py-0.5 transition-colors"
+      onClick={() => console.log("PriorityIcon showLabel button clicked")}
+    >
       {triggerIcon}
       <span className="text-sm">{config.label}</span>
     </button>
   ) : (
-    <button type="button" className={cn(
-      "inline-flex items-center justify-center shrink-0",
-      config.color,
-      "cursor-pointer",
-      className
-    )}>
+    <button 
+      type="button" 
+      className={cn(
+        "inline-flex items-center justify-center shrink-0",
+        config.color,
+        "cursor-pointer",
+        className
+      )}
+      onClick={() => console.log("PriorityIcon icon button clicked")}
+    >
       <Icon className="h-3.5 w-3.5" />
     </button>
   );

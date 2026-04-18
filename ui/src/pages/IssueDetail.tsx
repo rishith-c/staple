@@ -819,7 +819,7 @@ export function IssueDetail() {
                 "shrink-0 transition-opacity duration-200",
                 panelVisible ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100",
               )}
-              onClick={() => setPanelVisible(true)}
+              onClick={() => { console.log("Properties button clicked, panelVisible:", panelVisible); setPanelVisible(true); }}
               title="Show properties"
             >
               <SlidersHorizontal className="h-4 w-4" />
