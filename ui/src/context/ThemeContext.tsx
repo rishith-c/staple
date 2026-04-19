@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -38,8 +39,14 @@ function applyTheme(theme: Theme) {
   }
 }
 
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => resolveThemeFromDocument());
+  const isInitialThemeEffect = useRef(true);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
@@ -50,12 +57,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    applyTheme(theme);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Ignore local storage write failures in restricted environments.
+    const persist = () => {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+      } catch {
+        // Ignore local storage write failures in restricted environments.
+      }
+    };
+
+    const runApply = () => applyTheme(theme);
+
+    if (isInitialThemeEffect.current) {
+      isInitialThemeEffect.current = false;
+      runApply();
+      persist();
+      return;
     }
+
+    if (prefersReducedMotion()) {
+      runApply();
+    } else if (typeof document.startViewTransition === "function") {
+      document.startViewTransition(runApply);
+    } else {
+      runApply();
+    }
+
+    persist();
   }, [theme]);
 
   const value = useMemo(
