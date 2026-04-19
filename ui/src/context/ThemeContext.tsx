@@ -20,6 +20,8 @@ interface ThemeContextValue {
 const THEME_STORAGE_KEY = "staple.theme";
 const DARK_THEME_COLOR = "#18181b";
 const LIGHT_THEME_COLOR = "#ffffff";
+/** Hold burst class past `index.css` transition-duration so borders finish before we drop the rule. */
+const THEME_BURST_CLEAR_MS = 820;
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function resolveThemeFromDocument(): Theme {
@@ -97,9 +99,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add("theme-transition-active");
       runApply();
       burstClearRef.current = window.setTimeout(() => {
-        root.classList.remove("theme-transition-active");
-        burstClearRef.current = null;
-      }, 480);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            root.classList.remove("theme-transition-active");
+            burstClearRef.current = null;
+          });
+        });
+      }, THEME_BURST_CLEAR_MS);
     }
 
     persist();
