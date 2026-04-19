@@ -114,20 +114,27 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* Softer theme switch: View Transitions cross-fade (see ThemeContext). */
+/*
+ * Theme switch: short coordinated color transitions (see ThemeContext).
+ * Avoids document.startViewTransition cross-fades, which often leave ghosting on
+ * backdrop-blur, translucent panels, and SVG icons (currentColor / compositing).
+ */
 @media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: 380ms;
-    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
-  }
-
-  /* No View Transitions: ease surface colors only (set `data-theme-vt` in index.html). */
-  html[data-theme-vt="0"] body,
-  html[data-theme-vt="0"] #root {
-    transition:
-      background-color 0.45s cubic-bezier(0.33, 1, 0.68, 1),
-      color 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+  html.theme-transition-active body,
+  html.theme-transition-active body *:not(canvas):not(video):not(iframe) {
+    transition-property:
+      background-color,
+      color,
+      border-color,
+      outline-color,
+      fill,
+      stroke,
+      text-decoration-color,
+      box-shadow,
+      column-rule-color,
+      backdrop-filter;
+    transition-duration: 400ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
   }
 }
 

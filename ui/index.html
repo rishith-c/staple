@@ -33,12 +33,9 @@
           if (themeColorMeta) {
             themeColorMeta.setAttribute("content", isDark ? darkThemeColor : lightThemeColor);
           }
-          document.documentElement.dataset.themeVt =
-            typeof document.startViewTransition === "function" ? "1" : "0";
         } catch {
           document.documentElement.classList.add("dark");
           document.documentElement.style.colorScheme = "dark";
-          document.documentElement.dataset.themeVt = "0";
         }
       })();
     </script>

@@ -47,6 +47,7 @@ function prefersReducedMotion(): boolean {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => resolveThemeFromDocument());
   const isInitialThemeEffect = useRef(true);
+  const burstClearRef = useRef<number | null>(null);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
@@ -54,6 +55,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const toggleTheme = useCallback(() => {
     setThemeState((current) => (current === "dark" ? "light" : "dark"));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (burstClearRef.current) clearTimeout(burstClearRef.current);
+      if (typeof document !== "undefined") {
+        document.documentElement.classList.remove("theme-transition-active");
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -74,12 +84,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const root = document.documentElement;
+
     if (prefersReducedMotion()) {
       runApply();
-    } else if (typeof document.startViewTransition === "function") {
-      document.startViewTransition(runApply);
     } else {
+      if (burstClearRef.current) {
+        clearTimeout(burstClearRef.current);
+        burstClearRef.current = null;
+      }
+      root.classList.remove("theme-transition-active");
+      root.classList.add("theme-transition-active");
       runApply();
+      burstClearRef.current = window.setTimeout(() => {
+        root.classList.remove("theme-transition-active");
+        burstClearRef.current = null;
+      }, 480);
     }
 
     persist();
