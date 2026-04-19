@@ -1394,7 +1394,7 @@ export function OnboardingWizard() {
               step === 1 ? "w-1/2 opacity-100" : "w-0 opacity-0"
             )}
           >
-            <AsciiArtAnimation />
+            <AsciiArtAnimation clipCountBoost={5} />
           </div>
         </div>
       </DialogPortal>

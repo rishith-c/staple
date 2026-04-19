@@ -59,7 +59,15 @@ function spriteSize(sprite: StapleSprite): { width: number; height: number } {
   return { width, height: sprite.length };
 }
 
-export function AsciiArtAnimation() {
+type AsciiArtAnimationProps = {
+  /**
+   * Extra drifting wireframe sprites beyond the default density (from panel size).
+   * Use on wide hero panels (e.g. company onboarding) to fill empty space.
+   */
+  clipCountBoost?: number;
+};
+
+export function AsciiArtAnimation({ clipCountBoost = 0 }: AsciiArtAnimationProps) {
   const preRef = useRef<HTMLPreElement>(null);
   const frameRef = useRef<number | null>(null);
 
@@ -215,7 +223,8 @@ export function AsciiArtAnimation() {
       tick += delta;
 
       const cellCount = cols * rows;
-      const targetCount = Math.max(3, Math.floor(cellCount / 2200));
+      const targetCount =
+        Math.max(3, Math.floor(cellCount / 2200)) + Math.max(0, Math.floor(clipCountBoost));
       while (clips.length < targetCount) spawnClip();
 
       for (let i = 0; i < trail.length; i++) trail[i] *= 0.92;
