@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ChangeEvent, type DragEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { pickTextColorForSolidBg } from "@/lib/color-contrast";
+import { pickTextColorForPillBg, pickTextColorForSolidBg } from "@/lib/color-contrast";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { executionWorkspacesApi } from "../api/execution-workspaces";
@@ -41,6 +41,8 @@ import {
   ArrowDown,
   AlertTriangle,
   Tag,
+  Plus,
+  Trash2,
   Calendar,
   Paperclip,
   FileText,
@@ -63,6 +65,7 @@ interface IssueDraft {
   description: string;
   status: string;
   priority: string;
+  labelIds?: string[];
   assigneeValue: string;
   assigneeId?: string;
   projectId: string;
@@ -296,6 +299,11 @@ export function NewIssueDialog() {
   // Popover states
   const [statusOpen, setStatusOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [labelSearch, setLabelSearch] = useState("");
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#6366f1");
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [moreOpen, setMoreOpen] = useState(false);
   const [companyOpen, setCompanyOpen] = useState(false);
   const descriptionEditorRef = useRef<MarkdownEditorRef>(null);
@@ -336,6 +344,11 @@ export function NewIssueDialog() {
     queryKey: queryKeys.instance.experimentalSettings,
     queryFn: () => instanceSettingsApi.getExperimental(),
     enabled: newIssueOpen,
+  });
+  const { data: labelCatalog } = useQuery({
+    queryKey: queryKeys.issues.labels(effectiveCompanyId!),
+    queryFn: () => issuesApi.listLabels(effectiveCompanyId!),
+    enabled: Boolean(effectiveCompanyId) && newIssueOpen,
   });
   const currentUserId = session?.user?.id ?? session?.session?.userId ?? null;
   const activeProjects = useMemo(
@@ -389,6 +402,29 @@ export function NewIssueDialog() {
         : ["agents", "none", "adapter-models", assigneeAdapterType ?? "none"],
     queryFn: () => agentsApi.adapterModels(effectiveCompanyId!, assigneeAdapterType!),
     enabled: Boolean(effectiveCompanyId) && newIssueOpen && supportsAssigneeOverrides,
+  });
+
+  const createLabel = useMutation({
+    mutationFn: (data: { name: string; color: string }) => {
+      if (!effectiveCompanyId) throw new Error("No company selected");
+      return issuesApi.createLabel(effectiveCompanyId, data);
+    },
+    onSuccess: async (created) => {
+      if (!effectiveCompanyId) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.issues.labels(effectiveCompanyId) });
+      setSelectedLabelIds((ids) => [...ids, created.id]);
+      setNewLabelName("");
+    },
+  });
+
+  const deleteLabel = useMutation({
+    mutationFn: (labelId: string) => issuesApi.deleteLabel(labelId),
+    onSuccess: (_data, labelId) => {
+      if (effectiveCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.issues.labels(effectiveCompanyId) });
+      }
+      setSelectedLabelIds((ids) => ids.filter((id) => id !== labelId));
+    },
   });
 
   const createIssue = useMutation({
@@ -469,6 +505,7 @@ export function NewIssueDialog() {
       description,
       status,
       priority,
+      labelIds: selectedLabelIds,
       assigneeValue,
       projectId,
       projectWorkspaceId,
@@ -483,6 +520,7 @@ export function NewIssueDialog() {
     description,
     status,
     priority,
+    selectedLabelIds,
     assigneeValue,
     projectId,
     projectWorkspaceId,
@@ -516,6 +554,7 @@ export function NewIssueDialog() {
       setAssigneeChrome(false);
       setExecutionWorkspaceMode(defaultExecutionWorkspaceModeForProject(defaultProject));
       setSelectedExecutionWorkspaceId("");
+      setSelectedLabelIds([]);
       executionWorkspaceDefaultProjectId.current = defaultProjectId || null;
     } else if (draft && draft.title.trim()) {
       const restoredProjectId = newIssueDefaults.projectId ?? draft.projectId;
@@ -539,6 +578,7 @@ export function NewIssueDialog() {
           ?? (draft.useIsolatedExecutionWorkspace ? "isolated_workspace" : defaultExecutionWorkspaceModeForProject(restoredProject)),
       );
       setSelectedExecutionWorkspaceId(draft.selectedExecutionWorkspaceId ?? "");
+      setSelectedLabelIds(Array.isArray(draft.labelIds) ? draft.labelIds : []);
       executionWorkspaceDefaultProjectId.current = restoredProjectId || null;
     } else {
       const defaultProjectId = newIssueDefaults.projectId ?? "";
@@ -553,6 +593,7 @@ export function NewIssueDialog() {
       setAssigneeChrome(false);
       setExecutionWorkspaceMode(defaultExecutionWorkspaceModeForProject(defaultProject));
       setSelectedExecutionWorkspaceId("");
+      setSelectedLabelIds([]);
       executionWorkspaceDefaultProjectId.current = defaultProjectId || null;
     }
   }, [newIssueOpen, newIssueDefaults, orderedProjects]);
@@ -602,6 +643,11 @@ export function NewIssueDialog() {
     setStagedFiles([]);
     setIsFileDragOver(false);
     setCompanyOpen(false);
+    setLabelsOpen(false);
+    setLabelSearch("");
+    setNewLabelName("");
+    setNewLabelColor("#6366f1");
+    setSelectedLabelIds([]);
     executionWorkspaceDefaultProjectId.current = null;
   }
 
@@ -616,6 +662,9 @@ export function NewIssueDialog() {
     setAssigneeChrome(false);
     setExecutionWorkspaceMode("shared_workspace");
     setSelectedExecutionWorkspaceId("");
+    setSelectedLabelIds([]);
+    setLabelsOpen(false);
+    setLabelSearch("");
   }
 
   function discardDraft() {
@@ -664,6 +713,7 @@ export function NewIssueDialog() {
         ? { executionWorkspaceId: selectedExecutionWorkspaceId }
         : {}),
       ...(executionWorkspaceSettings ? { executionWorkspaceSettings } : {}),
+      ...(selectedLabelIds.length ? { labelIds: selectedLabelIds } : {}),
     });
   }
 
@@ -737,7 +787,11 @@ export function NewIssueDialog() {
     setStagedFiles((current) => current.filter((file) => file.id !== id));
   }
 
-  const hasDraft = title.trim().length > 0 || description.trim().length > 0 || stagedFiles.length > 0;
+  const hasDraft =
+    title.trim().length > 0 ||
+    description.trim().length > 0 ||
+    stagedFiles.length > 0 ||
+    selectedLabelIds.length > 0;
   const currentStatus = statuses.find((s) => s.value === status) ?? statuses[1]!;
   const currentPriority = priorities.find((p) => p.value === priority);
   const currentAssignee = selectedAssigneeAgentId
@@ -809,6 +863,7 @@ export function NewIssueDialog() {
     createIssue.error instanceof Error ? createIssue.error.message : "Failed to create issue. Try again.";
   const stagedDocuments = stagedFiles.filter((file) => file.kind === "document");
   const stagedAttachments = stagedFiles.filter((file) => file.kind === "attachment");
+  const labelsById = useMemo(() => new Map((labelCatalog ?? []).map((l) => [l.id, l])), [labelCatalog]);
 
   const handleProjectChange = useCallback((nextProjectId: string) => {
     setProjectId(nextProjectId);
@@ -1387,11 +1442,134 @@ export function NewIssueDialog() {
             </PopoverContent>
           </Popover>
 
-          {/* Labels chip (placeholder) */}
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/50 transition-colors text-muted-foreground">
-            <Tag className="h-3 w-3" />
-            Labels
-          </button>
+          {/* Labels chip */}
+          <Popover
+            open={labelsOpen}
+            onOpenChange={(open) => {
+              setLabelsOpen(open);
+              if (!open) setLabelSearch("");
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/50 transition-colors max-w-[220px]",
+                  selectedLabelIds.length === 0 && "text-muted-foreground",
+                )}
+                disabled={createIssue.isPending}
+              >
+                {selectedLabelIds.length > 0 ? (
+                  <div className="flex items-center gap-1 flex-wrap min-w-0">
+                    {selectedLabelIds.slice(0, 3).map((id) => {
+                      const label = labelsById.get(id);
+                      if (!label) return null;
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border shrink-0 max-w-[7rem] truncate"
+                          style={{
+                            borderColor: label.color,
+                            backgroundColor: `${label.color}22`,
+                            color: pickTextColorForPillBg(label.color, 0.13),
+                          }}
+                        >
+                          {label.name}
+                        </span>
+                      );
+                    })}
+                    {selectedLabelIds.length > 3 ? (
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        +{selectedLabelIds.length - 3}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    <Tag className="h-3 w-3 shrink-0" />
+                    Labels
+                  </>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-1" align="start" side="top" collisionPadding={16}>
+              <input
+                className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b border-border mb-1 placeholder:text-muted-foreground/50"
+                placeholder="Search labels..."
+                value={labelSearch}
+                onChange={(e) => setLabelSearch(e.target.value)}
+              />
+              <div className="max-h-44 overflow-y-auto overscroll-contain space-y-0.5">
+                {(labelCatalog ?? [])
+                  .filter((label) => {
+                    if (!labelSearch.trim()) return true;
+                    return label.name.toLowerCase().includes(labelSearch.toLowerCase());
+                  })
+                  .map((label) => {
+                    const selected = selectedLabelIds.includes(label.id);
+                    return (
+                      <div key={label.id} className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-2 flex-1 px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left min-w-0",
+                            selected && "bg-accent",
+                          )}
+                          onClick={() => {
+                            setSelectedLabelIds((ids) =>
+                              ids.includes(label.id)
+                                ? ids.filter((entry) => entry !== label.id)
+                                : [...ids, label.id],
+                            );
+                          }}
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
+                          <span className="truncate">{label.name}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 text-muted-foreground hover:text-destructive rounded shrink-0"
+                          onClick={() => deleteLabel.mutate(label.id)}
+                          title={`Delete ${label.name}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              <div className="mt-2 border-t border-border pt-2 space-y-1">
+                <div className="flex items-center gap-1">
+                  <input
+                    className="h-7 w-7 p-0 rounded bg-transparent shrink-0"
+                    type="color"
+                    value={newLabelColor}
+                    onChange={(e) => setNewLabelColor(e.target.value)}
+                  />
+                  <input
+                    className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-transparent outline-none rounded placeholder:text-muted-foreground/50"
+                    placeholder="New label"
+                    value={newLabelName}
+                    onChange={(e) => setNewLabelName(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-1.5 w-full px-2 py-1.5 text-xs rounded border border-border hover:bg-accent/50 disabled:opacity-50"
+                  disabled={!newLabelName.trim() || createLabel.isPending || !effectiveCompanyId}
+                  onClick={() =>
+                    createLabel.mutate({
+                      name: newLabelName.trim(),
+                      color: newLabelColor,
+                    })
+                  }
+                >
+                  <Plus className="h-3 w-3" />
+                  {createLabel.isPending ? "Creating…" : "Create label"}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Upload chip — triggers the hidden input at the top of DialogContent */}
           <button
